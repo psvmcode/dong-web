@@ -1,87 +1,119 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Delete, RefreshRight } from '@element-plus/icons-vue';
+import { RefreshRight } from '@element-plus/icons-vue';
 import SectionHead from '@/components/SectionHead.vue';
-import ResultView from '@/components/ResultView.vue';
 import { useApi } from '@/composables/useApi';
 import * as api from '@/api/order';
 import type { OrderBenchmarkResponse, OrderResponse, OrderTransitionLogResponse } from '@/api/types';
 import { money } from '@/utils/format';
 
 /**
- * 订单状态机。
+ * 订单详情页。
  *
- * <p>状态只能由事件推进，所以页面先把「当前可用事件」查出来，
- * 让用户能对上的按钮才是能成功提交的按钮——这就是状态机对外暴露的全部信息。
- * benchmark 用来对照「加了乐观锁」与「不加」在同并发下的差别。
+ * <p>订单状态机的价值是「不允许跳步」，所以这一页做成电商订单详情的样子：
+ * 顶部是状态步骤条，下面是订单信息，操作区只摆**当前状态真的能触发**的事件——
+ * 按钮列表来自后端的 available-events，不是前端自己列的九个事件。
+ * 点了不该点的事件会看到状态机把它拒绝，而拒绝本身也会记进流转日志。
  */
 
-const createForm = reactive({ userId: 1, productName: '无线降噪耳机', quantity: 1, payAmount: 999 });
+/** 正常履约链路的步骤。 */
+const STEPS = [
+    { key: 'WAIT_PAY', label: '待支付' },
+    { key: 'WAIT_SHIP', label: '待发货' },
+    { key: 'WAIT_RECEIVE', label: '待收货' },
+    { key: 'FINISHED', label: '已完成' },
+];
+
+/** 需要额外字段的事件。 */
+const FIELD_HINT: Record<string, string> = {
+    PAY: '需要支付流水号',
+    SHIP: '需要物流单号',
+    APPLY_REFUND: '需要退款金额',
+    REFUND_SUCCESS: '需要退款金额',
+    REFUND_FAIL: '需要原因',
+    CANCEL: '建议填原因',
+    TIMEOUT: '建议填原因',
+};
+
 const orderNo = ref('');
+const orders = ref<OrderResponse[]>([]);
 const events = ref<string[]>([]);
-const fireForm = reactive({
-    event: '',
-    operator: 'console',
-    payNo: '',
-    trackingNo: '',
-    refundAmount: 0,
-    reason: '',
-});
-const benchmarkForm = reactive({ threads: 8, orderNoForBm: '' });
+const detail = ref<OrderResponse | null>(null);
+const logs = ref<OrderTransitionLogResponse[]>([]);
+
+const fireForm = reactive({ event: '', operator: 'console', payNo: '', trackingNo: '', refundAmount: 0, reason: '' });
+const createForm = reactive({ userId: 1, productName: '无线降噪耳机', quantity: 1, payAmount: 999 });
+const benchmarkForm = reactive({ threads: 8 });
 const compare = ref<{ cas: OrderBenchmarkResponse | null; none: OrderBenchmarkResponse | null }>({ cas: null, none: null });
 const compareLoading = ref(false);
 
+const { loading: listLoading, call: callRecent } = useApi<OrderResponse[]>();
 const { result: createResult, call: callCreate } = useApi<string>();
-const { result: detailResult, call: callDetail } = useApi<OrderResponse>();
-const { result: logsResult, call: callLogs } = useApi<OrderTransitionLogResponse[]>();
+const { loading: detailLoading, call: callDetail } = useApi<OrderResponse>();
 const { result: fireResult, call: callFire } = useApi<OrderResponse>();
 const { result: benchmarkResult, call: callBenchmark } = useApi<OrderBenchmarkResponse>();
-const { result: plantumlResult, call: callPlantuml } = useApi<string>();
 
-const detail = computed(() => (detailResult.value?.ok ? detailResult.value.data : null));
-const logs = computed<OrderTransitionLogResponse[]>(() =>
-    logsResult.value?.ok && logsResult.value.data ? logsResult.value.data : [],
-);
+/**
+ * 当前状态在步骤条上的位置。
+ */
+const stepIndex = computed(() => STEPS.findIndex((step) => step.key === detail.value?.status));
+
+/**
+ * 是否处于终态。
+ */
+const isFinalState = computed(() => ['FINISHED', 'CANCELLED', 'REFUNDED'].includes(detail.value?.status ?? ''));
+
+/**
+ * 状态的中文名。
+ */
+const statusLabel = computed(() => STEPS.find((step) => step.key === detail.value?.status)?.label ?? (detail.value?.status ?? '-'));
+
+/**
+ * 加载最近订单。
+ */
+async function loadRecent() {
+    const res = await callRecent(() => api.recent(12));
+    if (res.ok && res.data) {
+        orders.value = res.data;
+    }
+}
+
+/**
+ * 加载某笔订单的详情、可用事件与日志。
+ *
+ * @param target 订单号
+ */
+async function loadOrder(target: string) {
+    orderNo.value = target;
+    const [detailRes, logRes] = await Promise.all([callDetail(() => api.detail(target)), api.logs(target)]);
+    detail.value = detailRes.ok ? detailRes.data : null;
+    logs.value = logRes.ok && logRes.data ? logRes.data : [];
+    const eventRes = await api.availableEvents(target);
+    events.value = eventRes.ok && eventRes.data ? eventRes.data : [];
+    if (events.value.length > 0 && !events.value.includes(fireForm.event)) {
+        fireForm.event = events.value[0];
+    }
+}
 
 /**
  * 创建订单。
  */
-async function doCreate() {
+async function create() {
     const res = await callCreate(() => api.create({ ...createForm }));
     if (res.ok && res.data) {
-        orderNo.value = res.data;
         ElMessage.success(`订单已创建：${res.data}`);
-        await loadOrder();
+        await loadRecent();
+        await loadOrder(res.data);
     }
 }
 
 /**
- * 拉取订单详情、可用事件与流转日志。
+ * 触发事件。
  */
-async function loadOrder() {
-    if (!orderNo.value) {
-        return;
-    }
-    await Promise.all([
-        callDetail(() => api.detail(orderNo.value)),
-        callLogs(() => api.logs(orderNo.value)),
-        (async () => {
-            const res = await api.availableEvents(orderNo.value);
-            events.value = res.ok && res.data ? res.data : [];
-            if (res.ok && res.data && res.data.length > 0 && !events.value.includes(fireForm.event)) {
-                fireForm.event = res.data[0];
-            }
-        })(),
-    ]);
-}
-
-/**
- * 触发事件推进状态。
- */
-async function doFire() {
+async function fire() {
     if (!fireForm.event) {
-        ElMessage.warning('先选一个事件');
+        ElMessage.warning('当前状态没有可触发的事件');
         return;
     }
     const res = await callFire(() =>
@@ -90,197 +122,403 @@ async function doFire() {
             operator: fireForm.operator || undefined,
             payNo: fireForm.payNo || undefined,
             trackingNo: fireForm.trackingNo || undefined,
-            refundAmount: refundEvents.includes(fireForm.event) ? fireForm.refundAmount : undefined,
+            refundAmount: ['APPLY_REFUND', 'REFUND_SUCCESS', 'REFUND_FAIL'].includes(fireForm.event)
+                ? fireForm.refundAmount
+                : undefined,
             reason: fireForm.reason || undefined,
         }),
     );
     if (res.ok) {
         ElMessage.success(`已触发 ${fireForm.event}`);
-        await loadOrder();
+        await loadOrder(orderNo.value);
+        await loadRecent();
+    } else {
+        ElMessage.warning(res.message);
     }
 }
 
 /**
- * 需要金额的退款事件。
- */
-const refundEvents = ['APPLY_REFUND', 'REFUND_SUCCESS', 'REFUND_FAIL'];
-
-/**
- * 删除订单。
- */
-async function doRemove() {
-    await api.remove(orderNo.value);
-    ElMessage.success('订单已删除');
-    await loadOrder();
-}
-
-/**
- * 同一订单跑两遍并发推进：一遍带乐观锁，一遍不带，看成功次数与最终版本号。
+ * 并发推进对照。
  */
 async function runCompare() {
-    const target = benchmarkForm.orderNoForBm || orderNo.value;
-    if (!target) {
-        ElMessage.warning('先填一个订单号');
+    if (!orderNo.value) {
+        ElMessage.warning('先选一笔订单');
         return;
     }
     compareLoading.value = true;
     try {
-        const cas = await callBenchmark(() => api.benchmark(target, 'cas', benchmarkForm.threads));
+        const cas = await callBenchmark(() => api.benchmark(orderNo.value, 'cas', benchmarkForm.threads));
         compare.value.cas = cas.ok ? cas.data : null;
-        const none = await callBenchmark(() => api.benchmark(target, 'none', benchmarkForm.threads));
+        const none = await callBenchmark(() => api.benchmark(orderNo.value, 'none', benchmarkForm.threads));
         compare.value.none = none.ok ? none.data : null;
     } finally {
         compareLoading.value = false;
     }
 }
+
+/**
+ * 事件按钮类型。
+ *
+ * @param event 事件名
+ */
+function eventTone(event: string): string {
+    if (['CANCEL', 'TIMEOUT', 'REFUND_FAIL'].includes(event)) {
+        return 'danger';
+    }
+    if (['PAY', 'SHIP', 'RECEIVE', 'REFUND_SUCCESS'].includes(event)) {
+        return 'primary';
+    }
+    return 'warning';
+}
+
+onMounted(async () => {
+    await loadRecent();
+    if (orders.value.length > 0) {
+        await loadOrder(orders.value[0].orderNo);
+    }
+});
 </script>
 
 <template>
-    <div>
+    <div class="od">
         <SectionHead
-            title="订单状态机"
-            desc="七个状态、九个事件，跨状态跳转由 COLA 状态机在框架层拦掉。并发也不能指望状态机：落库那一步仍然要乐观锁。"
+            title="订单详情"
+            desc="状态只能由事件推进，跳步与倒退都在状态机框架层被拦掉。操作区的按钮来自后端的可用事件查询，灰掉的分支就是不允许的迁移。"
         >
             <template #actions>
-                <el-button size="small" @click="callPlantuml(api.plantuml)">导出状态图</el-button>
+                <el-button size="small" :icon="RefreshRight" @click="loadRecent()">刷新订单</el-button>
             </template>
         </SectionHead>
 
-        <div class="lab-grid lab-grid--2">
-            <div class="lab-card">
-                <div class="lab-card__title">创建订单</div>
-                <div class="lab-card__desc">订单创建后处于待支付，之后的每一步都必须走事件。</div>
-                <el-form size="small" label-width="86px">
-                    <div class="lab-grid lab-grid--2">
-                        <el-form-item label="用户 id">
+        <div class="od__body">
+            <div class="od__main">
+                <div v-if="detail" class="od__state">
+                    <div class="od__state-icon">
+                        {{ isFinalState ? (detail.status === 'FINISHED' ? '✓' : '×') : '●' }}
+                    </div>
+                    <div>
+                        <div class="od__state-title">
+                            {{ statusLabel }}
+                            <el-tag size="small" effect="plain">版本 v{{ detail.version }}</el-tag>
+                            <el-tag v-if="detail.urgeCount > 0" size="small" type="warning" effect="dark">
+                                催单 {{ detail.urgeCount }} 次
+                            </el-tag>
+                        </div>
+                        <div class="od__state-desc">{{ detail.orderNo }}</div>
+                    </div>
+                </div>
+
+                <el-steps v-if="detail && !isFinalState" :active="stepIndex" finish-status="success" align-center class="od__steps">
+                    <el-step v-for="step in STEPS" :key="step.key" :title="step.label" />
+                </el-steps>
+                <el-alert
+                    v-else-if="detail"
+                    type="info"
+                    :closable="false"
+                    show-icon
+                    :title="`订单已进入终态：${statusLabel}`"
+                    description="终态不接受任何事件，这是幂等处理的前提——重复提交同一个事件不会把状态推歪。"
+                    class="od__steps"
+                />
+
+                <div v-if="detail" class="od__goods">
+                    <div class="od__goods-img">📦</div>
+                    <div class="od__goods-info">
+                        <div class="od__goods-name">{{ detail.productName }}</div>
+                        <div class="od__goods-meta">数量 {{ detail.quantity }} · 用户 {{ detail.userId }}</div>
+                        <div class="od__goods-meta">
+                            支付流水 {{ detail.payNo || '—' }} · 物流单号 {{ detail.trackingNo || '—' }}
+                        </div>
+                    </div>
+                    <div class="od__goods-amount">
+                        <div class="od__amount-value">¥{{ money(detail.payAmount) }}</div>
+                        <div v-if="detail.refundAmount > 0" class="od__amount-refund">
+                            已退 ¥{{ money(detail.refundAmount) }}（自 {{ detail.refundFrom || '-' }}）
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="detail" class="od__actions">
+                    <div class="od__actions-title">
+                        当前可触发的事件
+                        <span class="lab-hint">共 {{ events.length }} 个，其余都被状态机拦掉了</span>
+                    </div>
+                    <div class="lab-row">
+                        <el-button
+                            v-for="event in events"
+                            :key="event"
+                            size="small"
+                            :type="eventTone(event)"
+                            :plain="fireForm.event !== event"
+                            @click="fireForm.event = event"
+                        >
+                            {{ event }}
+                        </el-button>
+                        <span v-if="events.length === 0" class="lab-hint">终态，没有可用事件</span>
+                    </div>
+                    <div v-if="fireForm.event" class="od__fire">
+                        <div class="od__fire-hint">
+                            即将触发 <b>{{ fireForm.event }}</b>
+                            <span v-if="FIELD_HINT[fireForm.event]"> · {{ FIELD_HINT[fireForm.event] }}</span>
+                        </div>
+                        <el-form size="small" inline>
+                            <el-form-item label="操作人">
+                                <el-input v-model="fireForm.operator" style="width: 120px" />
+                            </el-form-item>
+                            <el-form-item v-if="fireForm.event === 'PAY'" label="支付流水">
+                                <el-input v-model="fireForm.payNo" style="width: 180px" placeholder="PAY20261005xxx" />
+                            </el-form-item>
+                            <el-form-item v-if="fireForm.event === 'SHIP'" label="物流单号">
+                                <el-input v-model="fireForm.trackingNo" style="width: 180px" placeholder="SF1234567890" />
+                            </el-form-item>
+                            <el-form-item v-if="['APPLY_REFUND', 'REFUND_SUCCESS', 'REFUND_FAIL'].includes(fireForm.event)" label="退款金额">
+                                <el-input-number v-model="fireForm.refundAmount" :min="0" :precision="2" controls-position="right" />
+                            </el-form-item>
+                            <el-form-item v-if="['CANCEL', 'TIMEOUT', 'REFUND_FAIL'].includes(fireForm.event)" label="原因">
+                                <el-input v-model="fireForm.reason" style="width: 200px" />
+                            </el-form-item>
+                            <el-form-item>
+                                <el-button type="primary" size="small" @click="fire">触发</el-button>
+                            </el-form-item>
+                        </el-form>
+                    </div>
+                </div>
+
+                <div class="od__panel">
+                    <div class="od__panel-title">状态流转日志</div>
+                    <el-timeline v-if="logs.length > 0" style="padding-left: 4px; max-height: 300px; overflow: auto">
+                        <el-timeline-item
+                            v-for="(log, index) in logs"
+                            :key="index"
+                            :type="log.accepted ? 'success' : 'danger'"
+                            :timestamp="log.createTime"
+                        >
+                            {{ log.fromStatus }} → {{ log.toStatus }}（{{ log.event }}）
+                            <span v-if="!log.accepted" class="od__rejected">被拒绝</span>
+                            <div class="lab-hint">{{ log.reason || '无' }} · {{ log.operator }}</div>
+                        </el-timeline-item>
+                    </el-timeline>
+                    <div v-else class="lab-hint">暂无流转日志</div>
+                </div>
+            </div>
+
+            <aside class="od__side">
+                <div class="od__panel">
+                    <div class="od__panel-title">新建订单</div>
+                    <el-form size="small" label-width="70px">
+                        <el-form-item label="用户">
                             <el-input-number v-model="createForm.userId" :min="1" controls-position="right" />
+                        </el-form-item>
+                        <el-form-item label="商品">
+                            <el-input v-model="createForm.productName" maxlength="128" />
                         </el-form-item>
                         <el-form-item label="数量">
                             <el-input-number v-model="createForm.quantity" :min="1" controls-position="right" />
                         </el-form-item>
-                    </div>
-                    <el-form-item label="商品名">
-                        <el-input v-model="createForm.productName" maxlength="128" />
-                    </el-form-item>
-                    <el-form-item label="金额">
-                        <el-input-number v-model="createForm.payAmount" :min="0" :precision="2" controls-position="right" />
-                    </el-form-item>
-                    <el-button type="primary" size="small" @click="doCreate">创建订单</el-button>
-                </el-form>
-                <ResultView :result="createResult" title="订单号" :max-height="120" style="margin-top: 10px" />
-            </div>
-
-            <div class="lab-card">
-                <div class="lab-card__title">订单操作</div>
-                <div class="lab-card__desc">可用事件由后端按当前状态返回，灰掉的事件就是状态机不允许的分支。</div>
-                <el-form size="small" label-width="86px">
-                    <el-form-item label="订单号">
-                        <el-input v-model="orderNo" placeholder="创建后自动填入" clearable />
-                    </el-form-item>
-                    <el-form-item label="可触发事件">
-                        <div class="lab-row">
-                            <el-tag v-for="event in events" :key="event" :type="fireForm.event === event ? 'primary' : 'info'" size="small" effect="plain" style="cursor: pointer" @click="fireForm.event = event">
-                                {{ event }}
-                            </el-tag>
-                            <span v-if="events.length === 0" class="lab-hint">尚未加载或已到终态</span>
-                        </div>
-                    </el-form-item>
-                    <el-form-item label="操作人">
-                        <el-input v-model="fireForm.operator" style="width: 200px" />
-                    </el-form-item>
-                    <el-form-item label="支付流水">
-                        <el-input v-model="fireForm.payNo" placeholder="PAY 事件需要" style="width: 220px" />
-                    </el-form-item>
-                    <el-form-item label="物流单号">
-                        <el-input v-model="fireForm.trackingNo" placeholder="SHIP 事件需要" style="width: 220px" />
-                    </el-form-item>
-                    <el-form-item label="退款金额">
-                        <el-input-number v-model="fireForm.refundAmount" :min="0" :precision="2" controls-position="right" />
-                    </el-form-item>
-                    <el-form-item label="原因">
-                        <el-input v-model="fireForm.reason" placeholder="取消 / 退款失败需要" />
-                    </el-form-item>
-                </el-form>
-                <div class="lab-row">
-                    <el-button size="small" :icon="RefreshRight" @click="loadOrder()">刷新</el-button>
-                    <el-button size="small" type="primary" @click="doFire">触发事件</el-button>
-                    <el-button size="small" type="danger" :icon="Delete" @click="doRemove">删除订单</el-button>
+                        <el-form-item label="金额">
+                            <el-input-number v-model="createForm.payAmount" :min="0" :precision="2" controls-position="right" />
+                        </el-form-item>
+                        <el-button type="primary" size="small" @click="create">创建订单</el-button>
+                    </el-form>
                 </div>
-            </div>
-        </div>
 
-        <div class="lab-grid lab-grid--2">
-            <div class="lab-card">
-                <div class="lab-card__title">订单详情</div>
-                <el-descriptions v-if="detail" :column="2" border size="small">
-                    <el-descriptions-item label="订单号">{{ detail.orderNo }}</el-descriptions-item>
-                    <el-descriptions-item label="状态">{{ detail.status }}（{{ detail.statusCode }}）</el-descriptions-item>
-                    <el-descriptions-item label="商品">{{ detail.productName }}</el-descriptions-item>
-                    <el-descriptions-item label="数量">{{ detail.quantity }}</el-descriptions-item>
-                    <el-descriptions-item label="应付">{{ money(detail.payAmount) }}</el-descriptions-item>
-                    <el-descriptions-item label="已退">{{ money(detail.refundAmount) }}</el-descriptions-item>
-                    <el-descriptions-item label="版本号">{{ detail.version }}</el-descriptions-item>
-                    <el-descriptions-item label="催单次数">{{ detail.urgeCount }}</el-descriptions-item>
-                    <el-descriptions-item label="支付流水">{{ detail.payNo || '-' }}</el-descriptions-item>
-                    <el-descriptions-item label="物流单号">{{ detail.trackingNo || '-' }}</el-descriptions-item>
-                </el-descriptions>
-                <div v-else class="lab-hint">还没有订单数据</div>
-                <ResultView :result="fireResult" title="触发事件的返回" :max-height="200" style="margin-top: 10px" />
-            </div>
-
-            <div class="lab-card">
-                <div class="lab-card__title">状态流转日志</div>
-                <div class="lab-card__desc">accepted 为 false 的条目是被状态机拒绝的迁移，拒绝后状态会退回原值，所以这里能反复看到同一对 from → to。</div>
-                <el-timeline v-if="logs.length > 0" style="padding-left: 4px; max-height: 340px; overflow: auto">
-                    <el-timeline-item
-                        v-for="(log, index) in logs"
-                        :key="index"
-                        :type="log.accepted ? 'success' : 'danger'"
-                        :timestamp="log.createTime"
+                <div class="od__panel">
+                    <div class="od__panel-title">最近订单</div>
+                    <el-table
+                        v-loading="listLoading"
+                        :data="orders"
+                        size="small"
+                        max-height="300"
+                        highlight-current-row
+                        @row-click="(row: OrderResponse) => loadOrder(row.orderNo)"
                     >
-                        {{ log.fromStatus }} → {{ log.toStatus }}（{{ log.event }}）
-                        <div class="lab-hint">{{ log.reason }} · 操作人 {{ log.operator }}</div>
-                    </el-timeline-item>
-                </el-timeline>
-                <div v-else class="lab-hint">暂无流转日志</div>
-            </div>
-        </div>
+                        <el-table-column prop="orderNo" label="订单号" min-width="180" show-overflow-tooltip />
+                        <el-table-column prop="status" label="状态" width="110" />
+                    </el-table>
+                </div>
 
-        <div class="lab-card">
-            <div class="lab-card__title">并发推进对比</div>
-            <div class="lab-card__desc">
-                cas 模式带乐观锁（where status=? and version=?），none 模式不带。同一个订单用两种模式各推进 threads 次，
-                对比成功次数与最终版本号，就能看到「没有锁时被覆盖写掉了多少」。
-            </div>
-            <el-form size="small" inline label-width="80px">
-                <el-form-item label="订单号">
-                    <el-input v-model="benchmarkForm.orderNoForBm" :placeholder="orderNo || '留空则用当前订单'" style="width: 260px" />
-                </el-form-item>
-                <el-form-item label="并发数">
-                    <el-input-number v-model="benchmarkForm.threads" :min="1" :max="100" controls-position="right" />
-                </el-form-item>
-                <el-form-item>
-                    <el-button type="danger" :loading="compareLoading" @click="runCompare">跑两组对照</el-button>
-                </el-form-item>
-            </el-form>
-            <el-table v-if="compare.cas || compare.none" :data="[compare.cas, compare.none].filter(Boolean)" border size="small">
-                <el-table-column prop="mode" label="模式" width="120" />
-                <el-table-column prop="threads" label="并发数" width="90" />
-                <el-table-column prop="successCount" label="成功次数" width="110" />
-                <el-table-column prop="blockedCount" label="被拦次数" width="110" />
-                <el-table-column prop="finalStatus" label="最终状态" width="130" />
-                <el-table-column prop="finalVersion" label="最终版本" width="110" />
-                <el-table-column prop="attemptLogCount" label="日志条数" width="110" />
-                <el-table-column prop="elapsedMs" label="耗时 ms" width="110" />
-            </el-table>
-            <ResultView :result="benchmarkResult" title="最后一次返回" :max-height="200" style="margin-top: 10px" />
-        </div>
-
-        <div class="lab-card">
-            <div class="lab-card__title">状态机图（PlantUML）</div>
-            <div class="lab-card__desc">导出的是 PlantUML 语法，粘到任意支持的工具里就能看到完整的状态跃迁图。</div>
-            <el-button size="small" type="primary" @click="callPlantuml(api.plantuml)">导出</el-button>
-            <ResultView :result="plantumlResult" empty-text="点「导出」生成" :max-height="260" style="margin-top: 10px" />
+                <div class="od__panel">
+                    <div class="od__panel-title">并发推进对照</div>
+                    <div class="lab-row">
+                        <el-input-number v-model="benchmarkForm.threads" :min="1" :max="100" size="small" controls-position="right" />
+                        <el-button size="small" type="danger" :loading="compareLoading" @click="runCompare">跑两组</el-button>
+                    </div>
+                    <el-table v-if="compare.cas || compare.none" :data="[compare.cas, compare.none].filter(Boolean)" size="small" style="margin-top: 10px">
+                        <el-table-column prop="mode" label="模式" width="80" />
+                        <el-table-column prop="successCount" label="成功" width="70" />
+                        <el-table-column prop="blockedCount" label="被拦" width="70" />
+                        <el-table-column prop="finalVersion" label="版本" width="70" />
+                        <el-table-column prop="elapsedMs" label="耗时" width="80" />
+                    </el-table>
+                    <div class="lab-hint" style="margin-top: 8px">
+                        cas 带乐观锁（where version=?），none 不带。被拦次数多的一方才是正确的一方。
+                    </div>
+                </div>
+            </aside>
         </div>
     </div>
 </template>
+
+<style scoped>
+.od__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 14px;
+    align-items: start;
+}
+
+.od__main {
+    background: #fff;
+    border: 1px solid var(--lab-border);
+    border-radius: var(--lab-radius);
+    box-shadow: var(--lab-shadow);
+    padding: 16px 18px;
+}
+
+.od__state {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #f2f4f8;
+}
+
+.od__state-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3d6ff5, #6f8cf7);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.od__state-title {
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.od__state-desc {
+    font-size: 12px;
+    color: var(--lab-muted);
+    font-family: Menlo, Consolas, monospace;
+    margin-top: 2px;
+}
+
+.od__steps {
+    margin: 18px 0;
+}
+
+.od__goods {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    background: #fafbfd;
+    border: 1px solid var(--lab-border);
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+
+.od__goods-img {
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    background: #eef1f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    flex: 0 0 56px;
+}
+
+.od__goods-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.od__goods-name {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.od__goods-meta {
+    font-size: 12px;
+    color: var(--lab-muted);
+    margin-top: 3px;
+}
+
+.od__goods-amount {
+    text-align: right;
+}
+
+.od__amount-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #e1251b;
+}
+
+.od__amount-refund {
+    font-size: 12px;
+    color: var(--lab-muted);
+    margin-top: 2px;
+}
+
+.od__actions {
+    margin-top: 14px;
+}
+
+.od__actions-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.od__fire {
+    margin-top: 12px;
+    background: #fafbfd;
+    border: 1px dashed var(--lab-border);
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.od__fire-hint {
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.od__rejected {
+    color: #dc4a4a;
+    font-size: 12px;
+    margin-left: 6px;
+}
+
+.od__panel {
+    background: #fff;
+    border: 1px solid var(--lab-border);
+    border-radius: var(--lab-radius);
+    box-shadow: var(--lab-shadow);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+}
+
+.od__panel-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+@media (max-width: 1100px) {
+    .od__body {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+</style>

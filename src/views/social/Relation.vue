@@ -1,189 +1,275 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import { RefreshRight, User } from '@element-plus/icons-vue';
 import SectionHead from '@/components/SectionHead.vue';
 import StatCard from '@/components/StatCard.vue';
-import ResultView from '@/components/ResultView.vue';
 import { useApi } from '@/composables/useApi';
 import * as api from '@/api/social';
+import { avatarColor } from '@/utils/scene';
 
 /**
  * 关注关系。
  *
- * <p>Redis set 的天然用法：关注列表与粉丝列表是两个独立集合，
- * 共同关注就是两个集合求交集。这一页把「写一对 _kv」与「读一对 _kv」分开摆，
- * 让人看清取关要同时改两个集合。
+ * <p>关注列表与粉丝列表是两个独立的 set，共同关注就是两个集合求交集。
+ * 所以「取关」必须同时改两个集合，少改一个就会留下「他还关注着，但对方粉丝列表里没有他」的脏数据。
  */
 
-const pair = reactive({ followerId: 1, followeeId: 2 });
-const subject = reactive({ userId: 1, firstUserId: 1, secondUserId: 2 });
+const me = ref(1);
+const followees = ref<number[]>([]);
+const followers = ref<number[]>([]);
+const common = ref<number[]>([]);
+const checking = ref(false);
+const isFollowing = ref<boolean | null>(null);
 
-const { result: opResult, call: callOp } = useApi<null>();
-const { result: followeesResult, call: callFollowees } = useApi<number[]>();
-const { result: followersResult, call: callFollowers } = useApi<number[]>();
+const pair = reactive({ followerId: 1, followeeId: 2, firstId: 1, secondId: 2 });
+
+const { loading: listLoading, call: callFollowees } = useApi<number[]>();
+const { call: callFollowers } = useApi<number[]>();
+const { call: callCommon } = useApi<number[]>();
 const { result: countsResult, call: callCounts } = useApi<Record<string, number>>();
-const { result: commonResult, call: callCommon } = useApi<number[]>();
-const { result: isFollowingResult, call: callIsFollowing } = useApi<boolean>();
-const { result: summaryResult, call: callSummary } = useApi<Record<string, unknown>>();
+const { call: callWrite } = useApi<null>();
 
-const followees = computed<number[]>(() => (followeesResult.value?.ok && followeesResult.value.data ? followeesResult.value.data : []));
-const followers = computed<number[]>(() => (followersResult.value?.ok && followersResult.value.data ? followersResult.value.data : []));
-const common = computed<number[]>(() => (commonResult.value?.ok && commonResult.value.data ? commonResult.value.data : []));
-const counts = computed(() => (countsResult.value?.ok ? countsResult.value.data : null));
+const following = computed(() => countsResult.value?.data?.following ?? followees.value.length);
+const followerCount = computed(() => countsResult.value?.data?.followers ?? followers.value.length);
 
 /**
- * 加载某个用户的全部关系。
+ * 刷新关系列表。
  */
-async function loadUser() {
-    await Promise.all([
-        callFollowees(() => api.followees(subject.userId)),
-        callFollowers(() => api.followers(subject.userId)),
-        callCounts(() => api.counts(subject.userId)),
-        callSummary(() => api.summary(subject.userId)),
+async function loadRelations() {
+    const [followeeRes, followerRes] = await Promise.all([
+        callFollowees(() => api.followees(me.value)),
+        callFollowers(() => api.followers(me.value)),
     ]);
+    followees.value = followeeRes.ok && followeeRes.data ? followeeRes.data : [];
+    followers.value = followerRes.ok && followerRes.data ? followerRes.data : [];
+    void callCounts(() => api.counts(me.value));
 }
 
 /**
- * 关注。
+ * 关注或取关。
+ *
+ * @param follow 关注为 true，取关为 false
  */
-async function follow() {
-    const res = await callOp(() => api.follow(pair.followerId, pair.followeeId));
+async function toggleFollow(follow: boolean) {
+    const res = await callWrite(() =>
+        follow ? api.follow(pair.followerId, pair.followeeId) : api.unfollow(pair.followerId, pair.followeeId),
+    );
     if (res.ok) {
-        ElMessage.success('已关注');
-        await loadUser();
+        ElMessage.success(follow ? `已关注 ${pair.followeeId}` : `已取关 ${pair.followeeId}`);
+        await loadRelations();
     }
 }
 
 /**
- * 取关。
+ * 判断是否已关注。
  */
-async function unfollow() {
-    const res = await callOp(() => api.unfollow(pair.followerId, pair.followeeId));
-    if (res.ok) {
-        ElMessage.success('已取消关注');
-        await loadUser();
+async function checkRelation() {
+    checking.value = true;
+    try {
+        const res = await api.isFollowing(pair.followerId, pair.followeeId);
+        isFollowing.value = res.ok ? Boolean(res.data) : null;
+    } finally {
+        checking.value = false;
     }
 }
 
 /**
- * 判断当前这对用户是否已是关注关系。
+ * 求两个用户的共同关注。
  */
-function check() {
-    void callIsFollowing(() => api.isFollowing(pair.followerId, pair.followeeId));
+function queryCommon() {
+    void callCommon(() => api.commonFollowees(pair.firstId, pair.secondId));
 }
 
 /**
- * 批量构造一组关系，方便直接看「共同关注」这类集合运算。
+ * 头像底色。
+ *
+ * @param id 用户 id
  */
-async function seedGraph() {
-    await Promise.all([
-        api.follow(1, 3),
-        api.follow(1, 4),
-        api.follow(1, 5),
-        api.follow(2, 3),
-        api.follow(2, 5),
-        api.follow(2, 6),
-    ]);
-    ElMessage.success('已构造示例关系：用户 1 与 2 共同关注了 3、5');
-    await loadUser();
+function color(id: number): string {
+    return avatarColor(id);
 }
 
-onMounted(loadUser);
+onMounted(loadRelations);
 </script>
 
 <template>
-    <div>
+    <div class="rl">
         <SectionHead
             title="关注关系"
-            desc="关注列表与粉丝列表是两个独立的 set，共同关注是两个集合求交集。取关必须同时改两个集合，少改一个就会留下脏数据。"
+            desc="关注列表与粉丝列表是两个独立的 set。取关要同时改两个集合，共同关注则是两个集合求交集。"
         >
             <template #actions>
-                <el-button size="small" @click="seedGraph">构造示例关系</el-button>
+                <el-button size="small" :icon="RefreshRight" @click="loadRelations()">刷新</el-button>
             </template>
         </SectionHead>
 
-        <div class="lab-grid lab-grid--2">
-            <div class="lab-card">
-                <div class="lab-card__title">关注 / 取关</div>
-                <div class="lab-card__desc">followerId 关注 followeeId，两个方向的重要性完全不同。</div>
-                <el-form size="small" label-width="96px">
-                    <div class="lab-grid lab-grid--2">
-                        <el-form-item label="发起关注者">
+        <div class="rl__body">
+            <div class="rl__main">
+                <div class="rl__panel">
+                    <div class="rl__panel-title">我关注的人（{{ followees.length }}）</div>
+                    <div v-if="followees.length > 0" class="rl__users">
+                        <div v-for="id in followees" :key="id" class="rl__user">
+                            <div class="rl__user-avatar" :style="{ background: color(id) }">
+                                {{ id % 100 }}
+                            </div>
+                            <div class="rl__user-name">实验员 {{ id % 100 }}</div>
+                            <el-tag size="small" effect="plain" type="success">已关注</el-tag>
+                            <el-button
+                                size="small"
+                                plain
+                                @click="pair.followerId = me; pair.followeeId = id; toggleFollow(false)"
+                            >
+                                取关
+                            </el-button>
+                        </div>
+                    </div>
+                    <div v-else class="rl__empty">
+                        还没有关注任何人。在下面填入一个用户 id 关注试试。
+                    </div>
+                </div>
+
+                <div class="rl__panel">
+                    <div class="rm__panel-title">我的粉丝（{{ followerCount }}）</div>
+                    <div v-if="followers.length > 0" class="rl__users">
+                        <div v-for="id in followers" :key="id" class="rl__user">
+                            <div class="rl__user-avatar" :style="{ background: color(id) }">
+                                {{ id % 100 }}
+                            </div>
+                            <div class="rl__user-name">实验员 {{ id % 100 }}</div>
+                            <el-tag size="small" effect="plain" type="info">粉丝</el-tag>
+                        </div>
+                    </div>
+                    <div v-else class="rl__empty">还没有粉丝</div>
+                </div>
+            </div>
+
+            <aside class="rl__side">
+                <div class="rl__panel">
+                    <div class="rl__panel-title">
+                        <el-icon><User /></el-icon>
+                        身份
+                    </div>
+                    <div class="lab-row">
+                        <el-input-number v-model="me" :min="1" size="small" controls-position="right" />
+                        <el-button size="small" @click="loadRelations()">切换</el-button>
+                    </div>
+                </div>
+
+                <div class="rl__panel">
+                    <div class="rl__panel-title">关注 / 取关</div>
+                    <el-form size="small" label-width="70px">
+                        <el-form-item label="发起方">
                             <el-input-number v-model="pair.followerId" :min="1" controls-position="right" />
                         </el-form-item>
-                        <el-form-item label="被关注者">
+                        <el-form-item label="目标方">
                             <el-input-number v-model="pair.followeeId" :min="1" controls-position="right" />
                         </el-form-item>
+                    </el-form>
+                    <div class="lab-row">
+                        <el-button size="small" type="primary" @click="toggleFollow(true)">关注</el-button>
+                        <el-button size="small" @click="toggleFollow(false)">取关</el-button>
                     </div>
-                </el-form>
-                <div class="lab-row">
-                    <el-button type="primary" size="small" @click="follow">关注</el-button>
-                    <el-button size="small" @click="unfollow">取消关注</el-button>
-                    <el-button size="small" @click="check">判断是否已关注</el-button>
-                    <el-tag v-if="isFollowingResult?.ok" :type="isFollowingResult.data ? 'success' : 'info'" size="small" effect="plain">
-                        {{ isFollowingResult.data ? '已关注' : '未关注' }}
-                    </el-tag>
                 </div>
-                <ResultView :result="opResult" title="写操作返回" :max-height="120" style="margin-top: 10px" />
-            </div>
 
-            <div class="lab-card">
-                <div class="lab-card__title">查询对象</div>
-                <div class="lab-card__desc">关注数、粉丝数、交集都围绕这一个用户展开。</div>
-                <el-form size="small" label-width="96px">
-                    <el-form-item label="用户 id">
-                        <el-input-number v-model="subject.userId" :min="1" controls-position="right" />
-                    </el-form-item>
-                    <div class="lab-grid lab-grid--2">
+                <div class="rl__panel">
+                    <div class="rl__panel-title">共同关注</div>
+                    <el-form size="small" inline label-width="56px">
                         <el-form-item label="用户 A">
-                            <el-input-number v-model="subject.firstUserId" :min="1" controls-position="right" />
+                            <el-input-number v-model="pair.firstId" :min="1" controls-position="right" />
                         </el-form-item>
                         <el-form-item label="用户 B">
-                            <el-input-number v-model="subject.secondUserId" :min="1" controls-position="right" />
+                            <el-input-number v-model="pair.secondId" :min="1" controls-position="right" />
                         </el-form-item>
+                        <el-form-item>
+                            <el-button size="small" @click="queryCommon">求交集</el-button>
+                        </el-form-item>
+                        <el-button size="small" :icon="RefreshRight" @click="loadRelations">刷新关系</el-button>
+                    </el-form>
+                    <div class="lab-row" style="margin-top: 8px">
+                        <el-tag v-for="id in common" :key="id" size="small" effect="light" type="warning">
+                            实验员 {{ id % 100 }}
+                        </el-tag>
+                        <span v-if="common.length === 0" class="lab-hint">没有共同关注，或还没查询</span>
                     </div>
-                </el-form>
-                <div class="lab-row">
-                    <el-button size="small" type="primary" @click="loadUser">加载关系</el-button>
-                    <el-button size="small" @click="callCommon(() => api.commonFollowees(subject.firstUserId, subject.secondUserId))">
-                        查共同关注
-                    </el-button>
                 </div>
-                <div class="lab-grid lab-grid--2" style="margin-top: 12px">
-                    <StatCard label="关注数" :value="counts?.following ?? counts?.followeeCount ?? followees.length" tone="accent" />
-                    <StatCard label="粉丝数" :value="counts?.followerCount ?? followers.length" tone="accent" />
-                </div>
-                <ResultView :result="countsResult" title="counts 原始返回" :max-height="160" style="margin-top: 10px" />
-            </div>
-        </div>
-
-        <div class="lab-grid lab-grid--3">
-            <div class="lab-card">
-                <div class="lab-card__title">关注的人</div>
-                <el-tag v-for="id in followees" :key="id" size="small" effect="light" style="margin: 0 6px 6px 0">{{ id }}</el-tag>
-                <div v-if="followees.length === 0" class="lab-hint">这个用户还没有关注别人</div>
-            </div>
-            <div class="lab-card">
-                <div class="lab-card__title">粉丝</div>
-                <el-tag v-for="id in followers" :key="id" size="small" effect="light" type="success" style="margin: 0 6px 6px 0">
-                    {{ id }}
-                </el-tag>
-                <div v-if="followers.length === 0" class="lab-hint">还没有粉丝</div>
-            </div>
-            <div class="lab-card">
-                <div class="lab-card__title">共同关注</div>
-                <div class="lab-card__desc">sinter 的结果，顺序不保证。</div>
-                <el-tag v-for="id in common" :key="id" size="small" effect="light" type="warning" style="margin: 0 6px 6px 0">
-                    {{ id }}
-                </el-tag>
-                <div v-if="common.length === 0" class="lab-hint">点上面的「查共同关注」</div>
-            </div>
-        </div>
-
-        <div class="lab-card">
-            <div class="lab-card__title">用户关系总览</div>
-            <div class="lab-card__desc">一次请求把该用户的社交位置兜出来，省掉前端多次往返。</div>
-            <ResultView :result="summaryResult" :max-height="220" />
+            </aside>
         </div>
     </div>
 </template>
+
+<style scoped>
+.rl__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 14px;
+    align-items: start;
+}
+
+.rl__main,
+.rl__side {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.rl__panel {
+    background: #fff;
+    border: 1px solid var(--lab-border);
+    border-radius: var(--lab-radius);
+    box-shadow: var(--lab-shadow);
+    padding: 14px 16px;
+}
+
+.rl__panel-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.rl__users {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.rl__user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.rl__user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 600;
+    flex: 0 0 32px;
+}
+
+.rl__user-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.rl__empty {
+    padding: 20px;
+    text-align: center;
+    color: var(--lab-muted);
+    font-size: 13px;
+}
+
+@media (max-width: 1000px) {
+    .rl__body {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+</style>

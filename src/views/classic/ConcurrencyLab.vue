@@ -1,37 +1,32 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import SectionHead from '@/components/SectionHead.vue';
-import StatCard from '@/components/StatCard.vue';
-import ResultView from '@/components/ResultView.vue';
 import EChart from '@/components/EChart.vue';
 import { useApi } from '@/composables/useApi';
 import * as api from '@/api/classic';
-import type { ClassicIdGenerated, ClassicLockLabResult, ClassicRateLimitLabResult } from '@/api/types';
 
 /**
- * 发号器 / 锁 / 限流三组对照实验。
+ * 性能对比实验室。
  *
- * <p>这三个实验是同一种方法论：同一件事用不同手段做一遍，
- * 把耗时、精度、丢失量放在同一张表里。页面因此统一按「跑全部 → 排表格」的形式组织，
- * 而不是让用户自己一个个按钮点过去。
+ * <p>三个实验共用同一种方法论：同一件事换几种做法，把结果画在同一张图上。
+ * 单个数字说明不了任何问题——「加锁耗时 23 秒」看起来很糟，
+ * 但只有跟「不加锁丢失 98 次更新」放在一起，才知道这个代价值不值。
  */
 
+const tab = ref<'id' | 'lock' | 'limiter'>('lock');
+
 const idCount = ref(1000);
-const idStrategy = ref('snowflake');
-const idRows = ref<Record<string, unknown>[]>([]);
 const idLoading = ref(false);
-const idHistory = ref<ClassicIdGenerated[]>([]);
+const idRows = ref<Record<string, unknown>[]>([]);
 
-const lockForm = ref({ threads: 20, loops: 20 });
-const lockRows = ref<Record<string, unknown>[]>([]);
+const lock = reactive({ threads: 10, loops: 10 });
 const lockLoading = ref(false);
-const lockHistory = ref<ClassicLockLabResult[]>([]);
+const lockRows = ref<Record<string, unknown>[]>([]);
 
-const limiterForm = ref({ bizKey: 'api-demo', limit: 100, windowSeconds: 60, attempts: 200, gapMillis: 300, distributed: true });
-const limiterAlgorithm = ref('SLIDING_WINDOW');
-const limiterRows = ref<ClassicRateLimitLabResult[]>([]);
+const limiter = reactive({ bizKey: 'api-demo', limit: 50, windowSeconds: 60, attempts: 120, gapMillis: 500, distributed: true });
 const limiterLoading = ref(false);
+const limiterRows = ref<Record<string, unknown> | null>(null);
 
 const { result: idResult, call: callId } = useApi<Record<string, unknown>>();
 const { result: tryResult, call: callTry } = useApi<boolean>();
@@ -40,7 +35,7 @@ const { result: compareResult, call: callCompare } = useApi<Record<string, unkno
 /**
  * 四种发号策略各跑一遍。
  */
-async function runAllStrategies() {
+async function runIds() {
     idLoading.value = true;
     idRows.value = [];
     try {
@@ -50,48 +45,42 @@ async function runAllStrategies() {
                 idRows.value.push(res.data as Record<string, unknown>);
             }
         }
-        const history = await api.idRecords(idStrategy.value, 10);
-        idHistory.value = history.ok && history.data ? history.data : [];
+        ElMessage.success('四种策略跑完了，看耗时对比');
     } finally {
         idLoading.value = false;
     }
 }
 
 /**
- * 锁实验：不带锁与带锁各跑一遍。
+ * 锁实验：不加锁与加锁各跑一遍。
  */
-async function runLockCompare() {
+async function runLock() {
     lockLoading.value = true;
     lockRows.value = [];
     try {
-        const none = await api.lockWithout(lockForm.value.threads, lockForm.value.loops);
+        const none = await api.lockWithout(lock.threads, lock.loops);
         if (none.ok) {
-            lockRows.value.push({ mode: 'none', ...(none.data as Record<string, unknown>) });
+            lockRows.value.push(none.data as Record<string, unknown>);
         }
-        const locked = await api.lockWith(lockForm.value.threads, lockForm.value.loops);
+        const locked = await api.lockWith(lock.threads, lock.loops);
         if (locked.ok) {
-            lockRows.value.push({ mode: 'lock', ...(locked.data as Record<string, unknown>) });
+            lockRows.value.push(locked.data as Record<string, unknown>);
         }
-        const [noLock, redisson] = await Promise.all([api.lockRecords('no-lock', 5), api.lockRecords('redisson-lock', 5)]);
-        lockHistory.value = [
-            ...(noLock.ok && noLock.data ? noLock.data : []),
-            ...(redisson.ok && redisson.data ? redisson.data : []),
-        ];
+        ElMessage.success('两组都跑完了');
     } finally {
         lockLoading.value = false;
     }
 }
 
 /**
- * 四种限流算法一轮对比：每种算法先来一轮突发，隔 gapMillis 再来第二轮。
+ * 限流：四种算法各来两轮突发。
  */
-async function runLimiterCompare() {
+async function runLimiter() {
     limiterLoading.value = true;
-    limiterRows.value = [];
+    limiterRows.value = null;
     try {
-        await callCompare(() => api.limiterCompare({ ...limiterForm.value }));
-        const history = await api.limiterRecords(limiterForm.value.bizKey, 20);
-        limiterRows.value = history.ok && history.data ? history.data : [];
+        const res = await callCompare(() => api.limiterCompare({ ...limiter }));
+        limiterRows.value = res.ok ? (res.data as Record<string, unknown>) : null;
         ElMessage.success('四算法对比完成');
     } finally {
         limiterLoading.value = false;
@@ -99,19 +88,22 @@ async function runLimiterCompare() {
 }
 
 /**
- * 单算法单次尝试。
+ * 从结果里取数字，字段名不统一时按候选顺序找。
+ *
+ * @param data 返回体
+ * @param keys 候选字段
  */
-async function tryOnce() {
-    const res = await callTry(() =>
-        api.limiterTry(
-            `${limiterForm.value.bizKey}:${limiterAlgorithm.value.toLowerCase()}`,
-            limiterAlgorithm.value,
-            limiterForm.value.limit,
-            limiterForm.value.windowSeconds,
-            limiterForm.value.distributed,
-        ),
-    );
-    ElMessage[res.ok && res.data ? 'success' : 'warning'](res.ok && res.data ? '拿到配额' : '被限流');
+function num(data: Record<string, unknown> | undefined, keys: string[]): number {
+    if (!data) {
+        return 0;
+    }
+    for (const key of keys) {
+        const value = data[key];
+        if (typeof value === 'number') {
+            return value;
+        }
+    }
+    return 0;
 }
 
 const idChart = computed(() => {
@@ -121,229 +113,309 @@ const idChart = computed(() => {
     }
     return {
         tooltip: { trigger: 'axis' },
-        grid: { left: 70, right: 20, top: 24, bottom: 40 },
-        xAxis: { type: 'category', data: rows.map((row) => String(row.strategy)) },
-        yAxis: { type: 'value', name: 'ms' },
+        grid: { left: 80, right: 24, top: 24, bottom: 30 },
+        xAxis: { type: 'value', name: 'ms' },
+        yAxis: { type: 'category', data: rows.map((row) => String(row.strategy)) },
         series: [
             {
                 type: 'bar',
-                data: rows.map((row) => Number(row.elapsedMillis ?? 0)),
-                itemStyle: { color: '#3d6ff5', borderRadius: [6, 6, 0, 0] },
+                data: rows.map((row) => ({ value: Number(row.elapsedMillis ?? 0), itemStyle: { color: '#3d6ff5', borderRadius: [0, 6, 6, 0] } })),
+                label: { show: true, position: 'right', fontSize: 11, formatter: '{c} ms' },
             },
         ],
     };
 });
 
-const limiterChart = computed(() => {
-    const rows = limiterRows.value;
+const lockChart = computed(() => {
+    const rows = lockRows.value;
     if (rows.length === 0) {
         return null;
     }
     return {
         tooltip: { trigger: 'axis' },
         legend: { bottom: 0 },
-        grid: { left: 70, right: 20, top: 24, bottom: 50 },
-        xAxis: { type: 'category', data: rows.map((row) => row.algorithm) },
-        yAxis: { type: 'value' },
+        grid: { left: 70, right: 24, top: 30, bottom: 44 },
+        xAxis: { type: 'category', data: rows.map((row) => (row.mode === 'no-lock' ? '不加锁' : 'Redisson 锁')) },
+        yAxis: [
+            { type: 'value', name: '次数' },
+            { type: 'value', name: 'ms' },
+        ],
+        series: [
+            {
+                name: '丢失更新',
+                type: 'bar',
+                data: rows.map((row) => num(row, ['lostUpdates'])),
+                itemStyle: { color: '#dc4a4a', borderRadius: [6, 6, 0, 0] },
+            },
+            {
+                name: '实际计数',
+                type: 'bar',
+                data: rows.map((row) => num(row, ['actual'])),
+                itemStyle: { color: '#16a34a', borderRadius: [6, 6, 0, 0] },
+            },
+            {
+                name: '耗时',
+                type: 'line',
+                yAxisIndex: 1,
+                data: rows.map((row) => num(row, ['elapsedMillis'])),
+                lineStyle: { color: '#f2b94b' },
+                itemStyle: { color: '#f2b94b' },
+            },
+        ],
+    };
+});
+
+const limiterChart = computed(() => {
+    const data = limiterRows.value;
+    if (!data) {
+        return null;
+    }
+    const entries = Object.entries(data);
+    return {
+        tooltip: { trigger: 'axis' },
+        legend: { bottom: 0 },
+        grid: { left: 70, right: 24, top: 30, bottom: 44 },
+        xAxis: { type: 'category', data: entries.map(([key]) => key) },
+        yAxis: { type: 'value', name: '放行次数' },
         series: [
             {
                 name: '第一轮放行',
                 type: 'bar',
-                data: rows.map((row) => row.firstBurstAllowed),
+                data: entries.map(([, value]) =>
+                    num(value as Record<string, unknown>, ['firstBurstAllowed']),
+                ),
                 itemStyle: { color: '#3d6ff5', borderRadius: [6, 6, 0, 0] },
             },
             {
                 name: '第二轮放行',
                 type: 'bar',
-                data: rows.map((row) => row.secondBurstAllowed),
+                data: entries.map(([, value]) =>
+                    num(value as Record<string, unknown>, ['secondBurstAllowed']),
+                ),
                 itemStyle: { color: '#f2b94b', borderRadius: [6, 6, 0, 0] },
             },
         ],
     };
 });
+
+const lockSummary = computed(() => {
+    const noLock = lockRows.value.find((row) => row.mode === 'no-lock');
+    const locked = lockRows.value.find((row) => row.mode !== 'no-lock');
+    if (!noLock || !locked) {
+        return null;
+    }
+    const lost = num(noLock, ['lostUpdates']);
+    const slow = num(locked, ['elapsedMillis']) / Math.max(1, num(noLock, ['elapsedMillis']));
+    return { lost, slow: slow.toFixed(1), expected: num(noLock, ['expected']) };
+});
 </script>
 
 <template>
-    <div>
+    <div class="pl">
         <SectionHead
-            title="发号器 / 锁 / 限流"
-            desc="三组实验都是同一个套路：同一件事换几种做法，把耗时、精度与丢失量并排摆出来。看数字之间的差距，比看单个结果有信息量得多。"
+            title="性能对比实验室"
+            desc="同一件事换几种做法，把数字并排摆出来。单个结果说明不了问题，差值才说明问题。"
         />
 
-        <el-tabs>
-            <el-tab-pane label="发号器">
-                <el-alert
-                    type="info"
-                    :closable="false"
-                    show-icon
-                    title="看什么"
-                    description="同样生成 count 个 id：snowflake 本地自增最快但不带业务语义，redis / segment 要过一次网络或用一批号，uuid 无顺序信息所以索引最差。elapsedMillis 的差距就是选择的依据。"
-                    style="margin-bottom: 12px"
-                />
-                <div class="lab-row">
-                    <el-input-number v-model="idCount" :min="1" :max="1000" size="small" controls-position="right" />
-                    <el-button type="primary" size="small" :loading="idLoading" @click="runAllStrategies">
-                        四种策略各跑一遍
-                    </el-button>
-                    <span class="lab-spacer" />
-                    <span class="lab-hint">历史记录只看这一种：</span>
-                    <el-select v-model="idStrategy" size="small" style="width: 160px" @change="api.idRecords(idStrategy, 10).then((res) => (idHistory = res.ok && res.data ? res.data : []))">
-                        <el-option label="snowflake" value="snowflake" />
-                        <el-option label="segment" value="segment" />
-                        <el-option label="redis" value="redis" />
-                        <el-option label="uuid" value="uuid" />
-                    </el-select>
-                </div>
-                <el-table :data="idRows" border stripe size="small" style="margin-top: 12px">
-                    <el-table-column prop="strategy" label="策略" width="120" />
-                    <el-table-column prop="count" label="生成数量" width="110" />
-                    <el-table-column prop="lastId" label="最后一个 id" min-width="200" show-overflow-tooltip />
-                    <el-table-column label="耗时 ms" width="120">
-                        <template #default="{ row }">{{ Number(row.elapsedMillis ?? 0).toFixed(2) }}</template>
-                    </el-table-column>
-                </el-table>
-                <EChart v-if="idChart" :option="idChart" :height="240" />
-                <div class="lab-grid lab-grid--2" style="margin-top: 12px">
+        <el-tabs v-model="tab">
+            <el-tab-pane label="并发锁" name="lock">
+                <div class="pl__run">
                     <div>
-                        <div class="lab-hint" style="margin-bottom: 6px">历史记录</div>
-                        <el-table :data="idHistory" border size="small" max-height="240">
-                            <el-table-column prop="strategy" label="策略" width="110" />
-                            <el-table-column prop="idCount" label="数量" width="90" />
-                            <el-table-column label="耗时 ms" width="110">
-                                <template #default="{ row }">{{ Number(row.elapsedMillis).toFixed(2) }}</template>
-                            </el-table-column>
-                            <el-table-column prop="createTime" label="时间" min-width="150" />
-                        </el-table>
+                        <div class="pl__run-title">加锁 vs 不加锁</div>
+                        <div class="pl__run-desc">
+                            期望值是「线程数 × 循环次数」，实际值是并发自增之后真正落下的值。
+                            两者的差就是被覆盖写掉的次数。
+                        </div>
                     </div>
-                    <ResultView :result="idResult" title="最后一次返回" :max-height="240" />
-                </div>
-            </el-tab-pane>
-
-            <el-tab-pane label="并发锁">
-                <el-alert
-                    type="warning"
-                    :closable="false"
-                    show-icon
-                    title="对照的意义"
-                    description="不加锁那一组必然丢失更新：expectedCount 是理论上该有的值，actualCount 是实际值，两者的差就是被覆盖写掉的次数。加锁组结果精确但耗时会高一个量级。"
-                    style="margin-bottom: 12px"
-                />
-                <div class="lab-row">
-                    <span class="lab-hint">并发线程</span>
-                    <el-input-number v-model="lockForm.threads" :min="1" :max="200" size="small" controls-position="right" />
+                    <span class="lab-spacer" />
+                    <el-input-number v-model="lock.threads" :min="1" :max="200" size="small" controls-position="right" />
+                    <span class="lab-hint">线程</span>
+                    <el-input-number v-model="lock.loops" :min="1" :max="500" size="small" controls-position="right" />
                     <span class="lab-hint">每线程循环</span>
-                    <el-input-number v-model="lockForm.loops" :min="1" :max="500" size="small" controls-position="right" />
-                    <el-button type="danger" size="small" :loading="lockLoading" @click="runLockCompare">跑两组对照</el-button>
+                    <el-button type="danger" size="small" :loading="lockLoading" @click="runLock">跑两组对照</el-button>
                 </div>
-                <el-table :data="lockRows" border stripe size="small" style="margin-top: 12px">
-                    <el-table-column prop="mode" label="模式" width="110">
+
+                <div v-if="lockSummary" class="pl__verdict">
+                    期望 {{ lockSummary.expected }} 次更新：不加锁丢了
+                    <b class="pl__bad">{{ lockSummary.lost }}</b> 次，加锁一次没丢，代价是慢了
+                    <b class="pl__warn">{{ lockSummary.slow }}</b> 倍。
+                </div>
+
+                <div class="pl__panel">
+                    <EChart v-if="lockChart" :option="lockChart" :height="280" />
+                    <div v-else class="lab-hint">点「跑两组对照」开始</div>
+                </div>
+
+                <el-table v-if="lockRows.length > 0" :data="lockRows" border size="small">
+                    <el-table-column label="模式" width="160">
                         <template #default="{ row }">
-                            <el-tag :type="row.mode === 'lock' ? 'success' : 'danger'" size="small">
-                                {{ row.mode === 'lock' ? '加 Redisson 锁' : '不加锁' }}
+                            <el-tag :type="row.mode === 'no-lock' ? 'danger' : 'success'" size="small" effect="dark">
+                                {{ row.mode === 'no-lock' ? '不加锁' : 'Redisson 锁' }}
                             </el-tag>
                         </template>
                     </el-table-column>
-                    <el-table-column prop="expectedCount" label="期望值" width="100" />
-                    <el-table-column prop="actualCount" label="实际值" width="100" />
-                    <el-table-column prop="lostUpdates" label="丢失更新" width="110" />
-                    <el-table-column prop="lockAcquired" label="获锁成功" width="110" />
-                    <el-table-column prop="lockTimedOut" label="获锁超时" width="110" />
-                    <el-table-column prop="elapsedMillis" label="耗时 ms" width="110" />
-                </el-table>
-                <div class="lab-grid lab-grid--3" style="margin-top: 12px">
-                    <StatCard
-                        label="不加锁丢失量"
-                        :value="String(lockRows.find((row) => row.mode === 'none')?.lostUpdates ?? '-')"
-                        tone="bad"
-                        hint="expectedCount - actualCount"
-                    />
-                    <StatCard
-                        label="加锁丢失量"
-                        :value="String(lockRows.find((row) => row.mode === 'lock')?.lostUpdates ?? '-')"
-                        tone="good"
-                        hint="应当始终为 0"
-                    />
-                    <StatCard
-                        label="耗时倍数"
-                        :value="
-                            lockRows.length === 2
-                                ? (Number(lockRows[1].elapsedMillis) / Math.max(1, Number(lockRows[0].elapsedMillis))).toFixed(1)
-                                : '-'
-                        "
-                        tone="warn"
-                        hint="加锁耗时 / 不加锁耗时"
-                    />
-                </div>
-                <el-table :data="lockHistory" border stripe size="small" style="margin-top: 12px">
-                    <el-table-column prop="mode" label="模式" width="140" />
-                    <el-table-column prop="expectedCount" label="期望值" width="100" />
-                    <el-table-column prop="actualCount" label="实际值" width="100" />
-                    <el-table-column prop="lostUpdates" label="丢失更新" width="110" />
-                    <el-table-column prop="elapsedMillis" label="耗时 ms" width="110" />
-                    <el-table-column prop="createTime" label="时间" min-width="160" />
+                    <el-table-column label="期望" width="90">
+                        <template #default="{ row }">{{ num(row, ['expected']) }}</template>
+                    </el-table-column>
+                    <el-table-column label="实际" width="90">
+                        <template #default="{ row }">{{ num(row, ['actual']) }}</template>
+                    </el-table-column>
+                    <el-table-column label="丢失更新" width="110">
+                        <template #default="{ row }">{{ num(row, ['lostUpdates']) }}</template>
+                    </el-table-column>
+                    <el-table-column label="获锁成功" width="110">
+                        <template #default="{ row }">{{ num(row, ['lockAcquired']) }}</template>
+                    </el-table-column>
+                    <el-table-column label="获锁超时" width="110">
+                        <template #default="{ row }">{{ num(row, ['lockTimedOut']) }}</template>
+                    </el-table-column>
+                    <el-table-column label="耗时 ms" width="110">
+                        <template #default="{ row }">{{ num(row, ['elapsedMillis']) }}</template>
+                    </el-table-column>
                 </el-table>
             </el-tab-pane>
 
-            <el-tab-pane label="限流算法">
+            <el-tab-pane label="限流算法" name="limiter">
+                <div class="pl__run">
+                    <div>
+                        <div class="pl__run-title">四种算法的两轮突发</div>
+                        <div class="pl__run-desc">
+                            第一轮把配额打光，隔 gapMillis 再打第二轮。固定窗口在临界点能放两倍流量，
+                            令牌桶与漏桶会在间隔里恢复一点，滑动窗口最精确但也最贵。
+                        </div>
+                    </div>
+                    <span class="lab-spacer" />
+                    <el-button type="primary" size="small" :loading="limiterLoading" @click="runLimiter">跑一轮对比</el-button>
+                </div>
+
+                <el-form size="small" inline label-width="86px">
+                    <el-form-item label="业务 key">
+                        <el-input v-model="limiter.bizKey" style="width: 160px" />
+                    </el-form-item>
+                    <el-form-item label="配额">
+                        <el-input-number v-model="limiter.limit" :min="1" controls-position="right" />
+                    </el-form-item>
+                    <el-form-item label="窗口秒">
+                        <el-input-number v-model="limiter.windowSeconds" :min="1" controls-position="right" />
+                    </el-form-item>
+                    <el-form-item label="突发次数">
+                        <el-input-number v-model="limiter.attempts" :min="1" controls-position="right" />
+                    </el-form-item>
+                    <el-form-item label="两轮间隔 ms">
+                        <el-input-number v-model="limiter.gapMillis" :min="0" controls-position="right" />
+                    </el-form-item>
+                    <el-form-item label="分布式">
+                        <el-switch v-model="limiter.distributed" />
+                    </el-form-item>
+                </el-form>
+
+                <div class="pl__panel">
+                    <EChart v-if="limiterChart" :option="limiterChart" :height="280" />
+                    <div v-else class="lab-hint">点「跑一轮对比」开始</div>
+                </div>
+
                 <el-alert
+                    v-if="limiterRows"
                     type="info"
                     :closable="false"
                     show-icon
-                    title="四算法的区别在哪"
-                    description="固定窗口在临界点能放两倍流量；滑动窗口精确但内存开销大；令牌桶允许突发；漏桶把突发削成匀速。第二轮故意隔 gapMillis 再打，就是为了看跨窗口那一瞬间各算法放了多少。"
-                    style="margin-bottom: 12px"
+                    title="怎么看这张图"
+                    description="第一轮放行超过配额的就是「临界点放了两倍流量」；第二轮放行为 0 说明窗口没恢复，大于 0 说明算法允许在间隔内补充配额。"
                 />
-                <el-form size="small" inline label-width="86px">
-                    <el-form-item label="业务 key">
-                        <el-input v-model="limiterForm.bizKey" style="width: 160px" />
-                    </el-form-item>
-                    <el-form-item label="配额">
-                        <el-input-number v-model="limiterForm.limit" :min="1" controls-position="right" />
-                    </el-form-item>
-                    <el-form-item label="窗口秒">
-                        <el-input-number v-model="limiterForm.windowSeconds" :min="1" controls-position="right" />
-                    </el-form-item>
-                    <el-form-item label="突发次数">
-                        <el-input-number v-model="limiterForm.attempts" :min="1" controls-position="right" />
-                    </el-form-item>
-                    <el-form-item label="两轮间隔 ms">
-                        <el-input-number v-model="limiterForm.gapMillis" :min="0" controls-position="right" />
-                    </el-form-item>
-                    <el-form-item label="分布式">
-                        <el-switch v-model="limiterForm.distributed" />
-                    </el-form-item>
-                </el-form>
-                <div class="lab-row">
-                    <el-button type="primary" size="small" :loading="limiterLoading" @click="runLimiterCompare">
-                        四算法对比
-                    </el-button>
-                    <el-select v-model="limiterAlgorithm" size="small" style="width: 180px">
-                        <el-option label="固定窗口" value="FIXED_WINDOW" />
-                        <el-option label="滑动窗口" value="SLIDING_WINDOW" />
-                        <el-option label="令牌桶" value="TOKEN_BUCKET" />
-                        <el-option label="漏桶" value="LEAKY_BUCKET" />
-                    </el-select>
-                    <el-button size="small" @click="tryOnce">单算法试一次</el-button>
+                <div v-if="tryResult" class="lab-hint">
+                    单次尝试结果：{{ tryResult.ok ? (tryResult.data ? '拿到配额' : '被限流') : `code ${tryResult.code}` }}
                 </div>
-                <el-table :data="limiterRows" border stripe size="small" style="margin-top: 12px">
-                    <el-table-column prop="algorithm" label="算法" min-width="130" />
-                    <el-table-column prop="limitCount" label="配额" width="90" />
-                    <el-table-column prop="windowSeconds" label="窗口秒" width="90" />
-                    <el-table-column prop="attempts" label="突发次数" width="100" />
-                    <el-table-column prop="firstBurstAllowed" label="第一轮放行" width="110" />
-                    <el-table-column prop="secondBurstAllowed" label="第二轮放行" width="110" />
-                    <el-table-column label="是否分布式" width="110">
-                        <template #default="{ row }">{{ row.distributed === 1 ? '是' : '否' }}</template>
+            </el-tab-pane>
+
+            <el-tab-pane label="发号器" name="id">
+                <div class="pl__run">
+                    <div>
+                        <div class="pl__run-title">四种 id 策略各生成 {{ idCount }} 个</div>
+                        <div class="pl__run-desc">
+                            snowflake 本地自增最快但不带业务语义；segment 一次取一批；redis 每次都要过网络；
+                            uuid 无序，进 InnoDB 主键会让页分裂明显变多。
+                        </div>
+                    </div>
+                    <span class="lab-spacer" />
+                    <el-input-number v-model="idCount" :min="1" :max="1000" size="small" controls-position="right" />
+                    <el-button type="primary" size="small" :loading="idLoading" @click="runIds">四种各跑一遍</el-button>
+                </div>
+
+                <div class="pl__panel">
+                    <EChart v-if="idChart" :option="idChart" :height="280" />
+                    <div v-else class="lab-hint">点「四种各跑一遍」开始</div>
+                </div>
+
+                <el-table v-if="idRows.length > 0" :data="idRows" border size="small">
+                    <el-table-column prop="strategy" label="策略" width="140" />
+                    <el-table-column prop="count" label="数量" width="100" />
+                    <el-table-column prop="lastId" label="最后一个 id" min-width="220" show-overflow-tooltip />
+                    <el-table-column label="耗时 ms" width="130">
+                        <template #default="{ row }">{{ Number(row.elapsedMillis ?? 0).toFixed(3) }}</template>
                     </el-table-column>
                 </el-table>
-                <div class="lab-grid lab-grid--2" style="margin-top: 12px">
-                    <EChart v-if="limiterChart" :option="limiterChart" :height="260" />
-                    <div>
-                        <ResultView :result="compareResult" title="对比原始返回" :max-height="240" />
-                        <ResultView :result="tryResult" title="单次尝试" :max-height="140" style="margin-top: 10px" />
-                    </div>
+                <div v-if="idResult" class="lab-hint">
+                    最后一次返回：{{ idResult.ok ? '成功' : `code ${idResult.code}` }}
                 </div>
             </el-tab-pane>
         </el-tabs>
     </div>
 </template>
+
+<style scoped>
+.pl__run {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid var(--lab-border);
+    border-left: 3px solid #3d6ff5;
+    border-radius: var(--lab-radius);
+    box-shadow: var(--lab-shadow);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.pl__run-title {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.pl__run-desc {
+    font-size: 12px;
+    color: var(--lab-muted);
+    line-height: 1.7;
+    margin-top: 4px;
+    max-width: 620px;
+}
+
+.pl__verdict {
+    background: #fff7e8;
+    border: 1px solid #ffe0a3;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-bottom: 12px;
+    line-height: 1.8;
+}
+
+.pl__bad {
+    color: #dc4a4a;
+    font-size: 16px;
+}
+
+.pl__warn {
+    color: #d98900;
+    font-size: 16px;
+}
+
+.pl__panel {
+    background: #fff;
+    border: 1px solid var(--lab-border);
+    border-radius: var(--lab-radius);
+    box-shadow: var(--lab-shadow);
+    padding: 12px 14px;
+    margin-bottom: 12px;
+}
+</style>
