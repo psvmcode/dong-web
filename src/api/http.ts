@@ -222,14 +222,19 @@ export function getJson<T>(url: string): Promise<ApiResult<T>> {
 }
 
 /**
- * 直接取原始响应体，用于 actuator 这种不套 Result 信封的端点。
+ * 取原始响应体，并把 4xx / 5xx 也当作「拿到了响应」。
+ *
+ * <p>actuator 在某个组件不可用时返回 HTTP 503，但响应体里是完整的健康详情。
+ * 用普通 get 会把它归到 catch 里，「一个中间件挂了」就被误报成「后端没启动」——
+ * 一个是降级运行，一个是整个服务不在，混在一起会让人往错误的方向排查。
  *
  * @param url 接口路径
+ * @returns 状态码与响应体；连不上时返回 null
  */
-export async function getRaw<T>(url: string): Promise<T | null> {
+export async function getRawTolerant<T>(url: string): Promise<{ status: number; body: T | null } | null> {
     try {
-        const response = await http.get<T>(url);
-        return response.data;
+        const response = await http.get<T>(url, { validateStatus: () => true });
+        return { status: response.status, body: (response.data ?? null) as T | null };
     } catch {
         return null;
     }

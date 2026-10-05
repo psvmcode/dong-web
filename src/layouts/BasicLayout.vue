@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Link, Refresh } from '@element-plus/icons-vue';
 import { menuGroups, type MenuLeaf } from '@/router/menu';
-import { health, type HealthBody } from '@/api/system';
+import { probeHealth, type HealthProbe } from '@/api/system';
 import TraceDrawer from '@/components/TraceDrawer.vue';
 
 /**
@@ -24,41 +24,40 @@ const leafMap = computed(() => {
 });
 
 const current = computed(() => leafMap.value.get(route.path) ?? null);
-const healthBody = ref<HealthBody | null>(null);
+const probe = ref<HealthProbe | null>(null);
 const healthLoading = ref(false);
 const checkedAt = ref('');
 
 /**
- * 探测后端健康状态。actuator 不套 Result 信封，失败时只会拿到 null。
+ * 探测后端健康状态。
+ *
+ * <p>actuator 在中间件不可用时返回 503，但那不等于后端没启动。
+ * 判定逻辑统一放在 probeHealth 里：拿到响应（含 503）就算在线，
+ * actuator 完全不可用时再退回业务接口探活。
  */
-async function probeHealth() {
+async function refreshHealth() {
     healthLoading.value = true;
     try {
-        healthBody.value = await health();
+        probe.value = await probeHealth();
         checkedAt.value = new Date().toLocaleTimeString('zh-CN', { hour12: false });
     } finally {
         healthLoading.value = false;
     }
 }
 
-/**
- * 只要能拿到 health 响应体就算「在线」。
- *  actuator 的 status 会因为某个中间件不可用而变成 DOWN，
- *  这时候业务接口仍然是通的，把它显示成离线会误导。
- */
-const online = computed(() => healthBody.value !== null);
+const online = computed(() => probe.value?.reachable ?? false);
 const activePath = computed(() => route.path);
 
 const components = computed(() =>
-    Object.entries(healthBody.value?.components ?? {}).map(([name, body]) => ({ name, status: body.status })),
+    Object.entries(probe.value?.components ?? {}).map(([name, body]) => ({ name, status: body.status })),
 );
 const downComponents = computed(() =>
     components.value.filter((item) => item.status !== 'UP').map((item) => item.name),
 );
 
 onMounted(() => {
-    void probeHealth();
-    window.setInterval(() => void probeHealth(), 30_000);
+    void refreshHealth();
+    window.setInterval(() => void refreshHealth(), 30_000);
 });
 </script>
 
@@ -106,10 +105,15 @@ onMounted(() => {
                     >
                         <el-tag type="warning" size="small" effect="dark" round>{{ downComponents.length }} 个组件不可用</el-tag>
                     </el-tooltip>
-                    <el-tag :type="online ? 'success' : 'danger'" size="small" effect="dark" round>
+                    <el-tooltip v-if="probe?.note" :content="probe.note" placement="bottom">
+                        <el-tag :type="online ? 'success' : 'danger'" size="small" effect="dark" round>
+                            {{ online ? (probe?.status === 'UP' ? '后端在线' : '后端在线（降级）') : '后端离线' }}
+                        </el-tag>
+                    </el-tooltip>
+                    <el-tag v-else :type="online ? 'success' : 'danger'" size="small" effect="dark" round>
                         {{ online ? '后端在线' : '后端离线' }}
                     </el-tag>
-                    <el-button size="small" :icon="Refresh" :loading="healthLoading" @click="probeHealth">
+                    <el-button size="small" :icon="Refresh" :loading="healthLoading" @click="refreshHealth">
                         {{ checkedAt ? `${checkedAt} 检查过` : '检查' }}
                     </el-button>
                     <el-button size="small" :icon="Link" text @click="router.push('/dashboard')">场景总览</el-button>
