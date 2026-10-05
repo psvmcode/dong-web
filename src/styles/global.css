@@ -42,18 +42,28 @@ body {
 
 /* ------------------------------------------------------ 布局骨架 */
 
+/**
+ * 应用外壳锁死视口高度，滚动只发生在内容区。
+ *
+ * <p>之前用 min-height:100vh 让整个文档一起滚，结果侧栏会被顶出视口——
+ * 场景多了以后每次切页都要往上滑回去。改成固定高度 + 内部滚动之后，
+ * 导航和顶栏的状态提示始终在眼前。
+ */
 .lab-shell {
     display: flex;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
 }
 
 .lab-aside {
     width: 240px;
     flex: 0 0 240px;
+    height: 100vh;
     background: linear-gradient(180deg, #16243d 0%, #111c31 55%, #0d1626 100%);
     color: #c7d2e4;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .lab-aside__brand {
@@ -84,11 +94,14 @@ body {
 .lab-main {
     flex: 1;
     min-width: 0;
+    height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .lab-header {
+    flex: 0 0 60px;
     height: 60px;
     padding: 0 24px;
     background: #fff;
@@ -111,8 +124,10 @@ body {
 }
 
 .lab-content {
-    padding: 18px 24px 32px;
+    flex: 1;
+    overflow-y: auto;
     overflow-x: hidden;
+    padding: 18px 24px 32px;
 }
 
 /* ------------------------------------------------------ 通用块 */
