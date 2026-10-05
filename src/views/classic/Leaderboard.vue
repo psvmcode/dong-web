@@ -186,8 +186,8 @@ onMounted(refresh);
                 </div>
                 <div class="lb__me-nums">
                     <div>
-                        <!-- rankOf 走 zrevrank，返回的是 0 基下标，展示时补 1 -->
-                        <div class="lb__me-value">{{ rankResult?.ok ? `#${rankResult.data + 1}` : '-' }}</div>
+                        <!-- 后端三个接口统一返回 1 基名次，直接用 -->
+                        <div class="lb__me-value">{{ rankResult?.ok ? `#${rankResult.data}` : '-' }}</div>
                         <div class="lb__me-label">名次</div>
                     </div>
                     <div>
