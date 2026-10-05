@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { Link, Refresh } from '@element-plus/icons-vue';
 import { menuGroups, type MenuLeaf } from '@/router/menu';
 import { health, type HealthBody } from '@/api/system';
+import TraceDrawer from '@/components/TraceDrawer.vue';
 
 /**
  * 基础布局：左侧场景导航 + 右侧工作区。
@@ -123,6 +124,8 @@ onMounted(() => {
                 </router-view>
             </main>
         </div>
+
+        <TraceDrawer />
     </div>
 </template>
 
