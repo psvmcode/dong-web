@@ -2,6 +2,8 @@ import type { Component } from 'vue';
 import {
     Box,
     Calendar,
+    FolderOpened,
+    UploadFilled,
     ChatLineSquare,
     Coin,
     Connection,
@@ -275,6 +277,20 @@ const menuGroups: MenuGroup[] = [
                 desc: '动态流：发布、点赞，推/拉两种读法的条数与耗时对比',
                 icon: ChatLineSquare,
                 tags: ['写扩散', '读扩散'],
+            },
+        ],
+    },
+    {
+        key: 'upload',
+        title: '文件分片上传',
+        icon: FolderOpened,
+        children: [
+            {
+                path: '/upload',
+                title: '分片上传与断点续传',
+                desc: '大文件切片并发上传，模拟刷新后只补传缺失分片，特大文件的指纹抽样策略对比',
+                icon: UploadFilled,
+                tags: ['分片', '断点续传', '秒传'],
             },
         ],
     },

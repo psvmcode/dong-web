@@ -154,6 +154,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'MongoDB 操作日志' },
     },
     {
+        path: '/upload',
+        name: 'upload',
+        component: () => import('@/views/upload/UploadLab.vue'),
+        meta: { title: '文件分片上传' },
+    },
+    {
         path: '/agent',
         name: 'agent',
         component: () => import('@/views/agent/AgentLab.vue'),
