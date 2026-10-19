@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
-import { RefreshRight, Upload } from '@element-plus/icons-vue';
+import { RefreshRight } from '@element-plus/icons-vue';
 import SectionHead from '@/components/SectionHead.vue';
 import { useApi } from '@/composables/useApi';
 import * as api from '@/api/upload';
@@ -40,11 +40,15 @@ const paused = ref(false);
 const instant = ref(false);
 const finished = ref(false);
 
+/** 已成功接收的字节数，逐片累加，比「片数 × 片大小」精确（最后一片通常不满）。 */
+const uploadedBytes = ref(0);
+/** 本轮开始计时的时刻，暂停时归零并把已跑的时间并入 accumulatedMs。 */
 const startedAt = ref(0);
+/** 之前各轮累计的毫秒数，暂停再继续时速度才不会被高估。 */
+const accumulatedMs = ref(0);
 const elapsedMs = ref(0);
 let timer: number | undefined;
 
-const { result: statusResult, call: callStatus } = useApi<api.UploadStatusResponse>();
 const { result: taskResult, call: callTasks } = useApi<{ total: number; list: api.UploadTaskResponse[] }>();
 const { call: callComplete } = useApi<string>();
 const { call: callCancel } = useApi<null>();
@@ -55,6 +59,11 @@ const { call: callCancel } = useApi<null>();
 const doneCount = computed(() => chunkStates.value.filter((state) => state === 'done').length);
 
 /**
+ * 失败分片数，用于决定要不要提示重试。
+ */
+const failedCount = computed(() => chunkStates.value.filter((state) => state === 'failed').length);
+
+/**
  * 上传进度百分比。
  */
 const percent = computed(() => (totalChunks.value === 0 ? 0 : Math.round((doneCount.value / totalChunks.value) * 100)));
@@ -63,12 +72,18 @@ const percent = computed(() => (totalChunks.value === 0 ? 0 : Math.round((doneCo
  * 平均速度，MB/s。
  */
 const speed = computed(() => {
-    if (elapsedMs.value <= 0 || !file.value) {
+    const millis = elapsedMs.value;
+    if (millis <= 0) {
         return '0.0';
     }
-    const bytes = doneCount.value * chunkSize.value;
-    return ((bytes / 1024 / 1024) / (elapsedMs.value / 1000)).toFixed(1);
+    return ((uploadedBytes.value / 1024 / 1024) / (millis / 1000)).toFixed(1);
 });
+
+/** 超过这个大小就不允许全量算指纹，直接退回抽样，避免把标签页卡死。 */
+const FULL_HASH_LIMIT = 2 * 1024 * 1024 * 1024;
+
+/** 超过这个大小时给个提示，但仍允许用户自己决定。 */
+const FULL_HASH_WARN = 500 * 1024 * 1024;
 
 /**
  * 选择文件。
@@ -81,6 +96,12 @@ function onPick(target: EventTarget | null): void {
     if (!picked) {
         return;
     }
+    if (picked.size === 0) {
+        // 空文件切出来是 0 片，后续所有分片下标校验都会失败，不如在入口就挡掉
+        ElMessage.warning('这是个空文件，没什么可传的');
+        input.value = '';
+        return;
+    }
     resetAll();
     file.value = picked;
     void computeHash();
@@ -90,17 +111,29 @@ function onPick(target: EventTarget | null): void {
  * 计算文件指纹，两种模式都可以在这里对比耗时。
  */
 async function computeHash(): Promise<void> {
-    if (!file.value) {
+    const target = file.value;
+    if (!target) {
         return;
     }
+    if (target.size > FULL_HASH_LIMIT) {
+        hashMode.value = 'sample';
+        ElMessage.warning('文件超过 2GB，全量指纹会把标签页算卡死，已切回抽样');
+    } else if (hashMode.value === 'full' && target.size > FULL_HASH_WARN) {
+        ElMessage.warning('全量模式要遍历整个文件，大文件会明显卡顿，可以对比完耗时再切回抽样');
+    }
+    // 换文件时先清掉旧指纹：计算是异步的，不清的话这一段空隙里
+    // 点「初始化」会拿上一个文件的指纹去建任务，续传到一个完全无关的任务上
+    hashResult.value = null;
     hashing.value = true;
     hashProgress.done = 0;
     hashProgress.total = 0;
     try {
-        hashResult.value = await computeFileHash(file.value, hashMode.value, (done, total) => {
+        hashResult.value = await computeFileHash(target, hashMode.value, (done, total) => {
             hashProgress.done = done;
             hashProgress.total = total;
         });
+    } catch (error) {
+        ElMessage.error(`指纹计算失败：${error instanceof Error ? error.message : '未知原因'}`);
     } finally {
         hashing.value = false;
     }
@@ -112,6 +145,10 @@ async function computeHash(): Promise<void> {
 async function prepare(): Promise<void> {
     if (!file.value || !hashResult.value) {
         ElMessage.warning('先选文件并算完指纹');
+        return;
+    }
+    if (hashing.value) {
+        ElMessage.warning('指纹还在算，算完再点');
         return;
     }
     const res = await api.init({
@@ -131,10 +168,13 @@ async function prepare(): Promise<void> {
     finished.value = res.data.instant;
     chunkStates.value = Array.from({ length: res.data.totalChunks }, () => 'pending');
     for (const index of res.data.uploadedChunks) {
-        if (index < chunkStates.value.length) {
+        // 下标来自服务端，理论上都在范围内，但越界赋值会在数组中间挖出空洞，
+        // 后面 every(state === 'done') 会因为空洞里的 undefined 永远判不通过
+        if (index >= 0 && index < chunkStates.value.length) {
             chunkStates.value[index] = 'done';
         }
     }
+    uploadedBytes.value = bytesForChunks(res.data.uploadedChunks);
     if (res.data.instant) {
         ElMessage.success('命中秒传，这个文件服务端已经有了，无需再传');
     } else if (res.data.uploadedChunks.length > 0) {
@@ -150,6 +190,11 @@ async function start(): Promise<void> {
         ElMessage.warning('先选一个文件');
         return;
     }
+    if (hashing.value || !hashResult.value) {
+        // 指纹没算完就 init，会拿空指纹或上一个文件的指纹建任务
+        ElMessage.warning('指纹还在算，算完再点');
+        return;
+    }
     if (!uploadId.value) {
         await prepare();
     }
@@ -159,18 +204,27 @@ async function start(): Promise<void> {
     uploading.value = true;
     paused.value = false;
     startedAt.value = Date.now();
+    stopTimer();
     timer = window.setInterval(() => {
-        elapsedMs.value = Date.now() - startedAt.value;
+        elapsedMs.value = accumulatedMs.value + (Date.now() - startedAt.value);
     }, 200);
     const queue = chunkStates.value
         .map((state, index) => ({ state, index }))
         .filter((item) => item.state !== 'done')
         .map((item) => item.index);
     await runPool(queue, concurrency.value);
-    window.clearInterval(timer);
-    elapsedMs.value = Date.now() - startedAt.value;
+    stopTimer();
+    elapsedMs.value = accumulatedMs.value + (Date.now() - startedAt.value);
     uploading.value = false;
-    if (!paused.value && chunkStates.value.every((state) => state === 'done')) {
+    if (paused.value) {
+        return;
+    }
+    if (failedCount.value > 0) {
+        ElMessage.warning(`有 ${failedCount.value} 个分片没传成功，再点一次「继续上传」会重试它们`);
+        void loadTasks();
+        return;
+    }
+    if (chunkStates.value.every((state) => state === 'done')) {
         await merge();
     }
     void loadTasks();
@@ -210,9 +264,23 @@ async function uploadOne(index: number): Promise<void> {
     const start = index * chunkSize.value;
     const blob = file.value.slice(start, Math.min(start + chunkSize.value, file.value.size));
     const res = await api.chunk({ uploadId: uploadId.value, chunkIndex: index, blob });
-    chunkStates.value[index] = res.ok ? 'done' : 'failed';
-    if (!res.ok) {
-        ElMessage.warning(`分片 #${index} 失败：${res.message}`);
+    if (res.ok) {
+        chunkStates.value[index] = 'done';
+        // 按实际切片大小累加，最后一片通常不满，用「片数 × 片大小」会高估进度与速度
+        uploadedBytes.value += blob.size;
+        return;
+    }
+    chunkStates.value[index] = 'failed';
+    ElMessage.warning(`分片 #${index} 失败：${res.message}`);
+}
+
+/**
+ * 停掉计时器。
+ */
+function stopTimer(): void {
+    if (timer !== undefined) {
+        window.clearInterval(timer);
+        timer = undefined;
     }
 }
 
@@ -235,8 +303,14 @@ async function merge(): Promise<void> {
 function pause(): void {
     paused.value = true;
     uploading.value = false;
-    window.clearInterval(timer);
-    ElMessage.info('已暂停，点「继续」接着传');
+    stopTimer();
+    // 本轮跑过的时间并进累计值，继续时从新时刻重新计时；
+    // 不这么做的话，暂停期间不算时间、已传字节却不减，速度会被算得虚高
+    if (startedAt.value > 0) {
+        accumulatedMs.value += Date.now() - startedAt.value;
+        startedAt.value = 0;
+    }
+    ElMessage.info('已暂停，点「继续上传」接着传');
 }
 
 /**
@@ -264,7 +338,10 @@ async function cancelTask(): Promise<void> {
 }
 
 /**
- * 清空本地状态但保留文件选择之外的所有上下文。
+ * 清空本次上传的全部本地状态。
+ *
+ * <p>uploadId 也一起清：它跟分片大小绑定，换文件、换分片大小之后
+ * 旧任务号在新口径下没有意义，留着只会让续传续到一个口径不一致的任务上。
  */
 function resetAll(): void {
     uploadId.value = '';
@@ -274,9 +351,41 @@ function resetAll(): void {
     finished.value = false;
     uploading.value = false;
     paused.value = false;
+    uploadedBytes.value = 0;
+    accumulatedMs.value = 0;
+    startedAt.value = 0;
     elapsedMs.value = 0;
-    window.clearInterval(timer);
+    hashResult.value = null;
+    stopTimer();
 }
+
+/**
+ * 按已收分片下标算出已收字节数。
+ *
+ * <p>最后一片通常不满，所以按「剩余多少」逐片算，不能直接用片数乘片大小。
+ *
+ * @param indices 已收分片下标
+ */
+function bytesForChunks(indices: number[]): number {
+    const total = file.value?.size ?? 0;
+    const size = chunkSize.value;
+    return indices.reduce((sum, index) => sum + Math.min(size, Math.max(0, total - index * size)), 0);
+}
+
+/**
+ * 分片大小变了就作废当前任务。
+ *
+ * <p>uploadId 由「指纹 + 大小 + 文件名 + 分片大小」推导，分片大小一变就是另一个任务。
+ * 不重置的话，界面会拿旧 uploadId 去收新口径的分片，
+ * 后端的分片大小校验要么直接拒绝，要么收下一批边界对不上的分片。
+ */
+watch(chunkSize, () => {
+    if (uploadId.value === '') {
+        return;
+    }
+    resetAll();
+    ElMessage.info('分片大小变了，已重置任务，点「初始化」重新开始');
+});
 
 /**
  * 加载任务列表。
@@ -383,7 +492,8 @@ onMounted(loadTasks);
             <div class="up__panel-title">
                 上传进度
                 <span class="up__progress-meta">
-                    {{ doneCount }} / {{ totalChunks }} 片 · {{ speed }} MB/s · {{ (elapsedMs / 1000).toFixed(1) }} s
+                    {{ doneCount }} / {{ totalChunks }} 片 · {{ formatBytes(uploadedBytes) }} /
+                    {{ formatBytes(file?.size ?? 0) }} · {{ speed }} MB/s · {{ (elapsedMs / 1000).toFixed(1) }} s
                 </span>
             </div>
             <el-progress :percentage="percent" :stroke-width="14" :status="finished ? 'success' : undefined" />
@@ -403,6 +513,9 @@ onMounted(loadTasks);
                 <span><i class="up__dot up__dot--uploading"></i>上传中</span>
                 <span><i class="up__dot up__dot--done"></i>已接收</span>
                 <span><i class="up__dot up__dot--failed"></i>失败</span>
+            </div>
+            <div v-if="failedCount > 0 && !uploading" class="up__hint">
+                有 {{ failedCount }} 个分片没传成功。再点一次「继续上传」只重试这些，已经收到的不会重传。
             </div>
         </div>
 
