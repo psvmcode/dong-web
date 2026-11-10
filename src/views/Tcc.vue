@@ -130,13 +130,13 @@ const statusEntries = computed(() => Object.entries(statusMap.value));
                                 {{ form.forceFailure ? '提交后 Try 会成功，Confirm 报错，最终由 Cancel 把预扣的资源还回去' : '关闭时走完整成功链路' }}
                             </div>
                         </div>
-                        <el-switch v-model="form.forceFailure" size="large" />
+                        <el-switch v-model="form.forceFailure" size="small" />
                     </div>
 
                     <el-button
                         class="tc__submit"
                         :type="form.forceFailure ? 'danger' : 'primary'"
-                        size="large"
+                        size="small"
                         :loading="submitLoading"
                         @click="submit"
                     >
@@ -172,7 +172,6 @@ const statusEntries = computed(() => Object.entries(statusMap.value));
 
             <div class="tc__result">
                 <div v-if="result" class="tc__verdict" :class="{ 'tc__verdict--ok': committed, 'tc__verdict--bad': !committed }">
-                    <div class="tc__verdict-icon">{{ committed ? '✓' : '↩' }}</div>
                     <div>
                         <div class="tc__verdict-title">{{ committed ? '转账成功' : '已回滚' }}</div>
                         <div class="tc__verdict-desc">{{ result.message }}</div>
@@ -180,7 +179,6 @@ const statusEntries = computed(() => Object.entries(statusMap.value));
                     </div>
                 </div>
                 <div v-else class="tc__placeholder">
-                    <div class="tc__placeholder-icon">💸</div>
                     <div>提交一笔转账，看三个分支分别落地成什么状态</div>
                 </div>
 
@@ -189,12 +187,12 @@ const statusEntries = computed(() => Object.entries(statusMap.value));
                         <div class="tc__phase-name">Try</div>
                         <div class="tc__phase-desc">冻结库存与账户额度</div>
                     </div>
-                    <span class="tc__arrow">›</span>
+                    <span class="tc__arrow">→</span>
                     <div class="tc__phase" :class="{ 'is-on': committed === true, 'is-off': committed === false }">
                         <div class="tc__phase-name">Confirm</div>
                         <div class="tc__phase-desc">真正扣减并落地</div>
                     </div>
-                    <span class="tc__arrow">›</span>
+                    <span class="tc__arrow">→</span>
                     <div class="tc__phase" :class="{ 'is-on': committed === false, 'is-off': committed === true }">
                         <div class="tc__phase-name">Cancel</div>
                         <div class="tc__phase-desc">释放预扣资源</div>
@@ -228,7 +226,7 @@ const statusEntries = computed(() => Object.entries(statusMap.value));
 
                 <div v-if="recoverResult" class="tc__card">
                     <div class="tc__card-title">手工恢复</div>
-                    <el-tag :type="recoverResult.ok ? 'success' : 'danger'" effect="dark">
+                    <el-tag :type="recoverResult.ok ? 'success' : 'danger'" effect="plain">
                         {{ recoverResult.ok ? `恢复 ${recoverResult.data} 笔` : `code ${recoverResult.code}` }}
                     </el-tag>
                 </div>
@@ -253,10 +251,9 @@ const statusEntries = computed(() => Object.entries(statusMap.value));
 }
 
 .tc__card {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 14px 16px;
 }
 
@@ -277,16 +274,16 @@ const statusEntries = computed(() => Object.entries(statusMap.value));
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    background: #fafbfd;
+    background: #fafbfc;
     border: 1px solid var(--lab-border);
-    border-radius: 10px;
+    border-radius: var(--lab-radius);
     padding: 12px;
     margin-bottom: 12px;
 }
 
 .tc__switch--danger {
-    background: #fff5f5;
-    border-color: #f6cfcf;
+    background: var(--lab-danger-soft);
+    border-color: var(--lab-border);
 }
 
 .tc__switch-title {
@@ -309,21 +306,20 @@ const statusEntries = computed(() => Object.entries(statusMap.value));
     display: flex;
     align-items: center;
     gap: 14px;
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
-    border-left: 4px solid #c9cdd6;
+    border-left: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 16px 18px;
 }
 
 .tc__verdict--ok {
-    border-left-color: #16a34a;
+    border-left-color: var(--lab-success);
 }
 
 .tc__verdict--bad {
-    border-left-color: #dc4a4a;
-    background: #fffbfb;
+    border-left-color: var(--lab-danger);
+    background: var(--lab-card);
 }
 
 .tc__verdict-icon {
@@ -333,20 +329,20 @@ const statusEntries = computed(() => Object.entries(statusMap.value));
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
-    font-weight: 700;
-    background: #f0f2f6;
-    color: #7a869a;
+    font-size: 16px;
+    font-weight: 600;
+    background: var(--lab-border);
+    color: var(--lab-muted);
 }
 
 .tc__verdict--ok .tc__verdict-icon {
-    background: #e6f7ee;
-    color: #16a34a;
+    background: var(--lab-success-soft);
+    color: var(--lab-success);
 }
 
 .tc__verdict--bad .tc__verdict-icon {
-    background: #ffece8;
-    color: #dc4a4a;
+    background: var(--lab-danger-soft);
+    color: var(--lab-danger);
 }
 
 .tc__verdict-title {
@@ -361,14 +357,14 @@ const statusEntries = computed(() => Object.entries(statusMap.value));
 }
 
 .tc__verdict-xid {
-    font-family: Menlo, Consolas, monospace;
+    font-family: var(--lab-font-mono);
     font-size: 11px;
-    color: #a3acbb;
+    color: var(--lab-muted);
     margin-top: 4px;
 }
 
 .tc__placeholder {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px dashed var(--lab-border);
     border-radius: var(--lab-radius);
     padding: 40px 20px;
@@ -377,7 +373,7 @@ const statusEntries = computed(() => Object.entries(statusMap.value));
 }
 
 .tc__placeholder-icon {
-    font-size: 36px;
+    font-size: 16px;
 }
 
 .tc__phases {
@@ -388,23 +384,17 @@ const statusEntries = computed(() => Object.entries(statusMap.value));
 
 .tc__phase {
     flex: 1;
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
-    border-radius: 10px;
+    border-radius: var(--lab-radius);
     padding: 12px 10px;
     text-align: center;
 }
 
 .tc__phase.is-on {
-    border-color: #b6e6c9;
-    background: #f2fbf6;
-}
-
-.tc__phase.is-off {
-    opacity: 0.45;
-}
-
-.tc__phase-name {
+    border-color: var(--lab-success);
+    background: #fafbfc;
+}.tc__phase-name {
     font-size: 14px;
     font-weight: 600;
 }
@@ -417,7 +407,7 @@ const statusEntries = computed(() => Object.entries(statusMap.value));
 
 .tc__arrow {
     align-self: center;
-    color: #c9cdd6;
+    color: var(--lab-border);
     font-size: 18px;
 }
 

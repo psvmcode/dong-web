@@ -140,7 +140,7 @@ onMounted(() => {
         </SectionHead>
 
         <div class="cs__state" :class="{ 'cs__state--ok': consistent === true, 'cs__state--bad': consistent === false }">
-            <div class="cs__state-icon">{{ consistent === null ? '…' : consistent ? '✓' : '!' }}</div>
+            <span class="lab-dot" :class="consistent === null ? '' : consistent ? 'lab-dot--good' : 'lab-dot--bad'"></span>
             <div>
                 <div class="cs__state-title">
                     {{ consistent === null ? '尚未对账' : consistent ? '两侧完全一致' : '两侧不一致' }}
@@ -195,7 +195,7 @@ onMounted(() => {
                 <div class="cs__op-desc">只处理报告里列出的那些 id：补写缺失与过期文档、删除孤儿文档，结束后 refresh。</div>
                 <el-button type="warning" :loading="repairLoading" @click="repair()">执行修复</el-button>
                 <div v-if="repairResult" class="cs__op-result">
-                    <el-tag size="small" :type="repairResult.ok ? 'success' : 'danger'" effect="dark">
+                    <el-tag size="small" :type="repairResult.ok ? 'success' : 'danger'" effect="plain">
                         {{ repairResult.ok ? `修复 ${repairResult.data?.repairedCount ?? 0} 条` : `code ${repairResult.code}` }}
                     </el-tag>
                 </div>
@@ -205,7 +205,7 @@ onMounted(() => {
                 <div class="cs__op-desc">从 MySQL 全量重建索引并清理孤儿文档，期间索引仍可查。</div>
                 <el-button type="primary" :loading="syncLoading" @click="sync()">从 MySQL 同步</el-button>
                 <div v-if="syncResult" class="cs__op-result">
-                    <el-tag size="small" :type="syncResult.ok ? 'success' : 'danger'" effect="dark">
+                    <el-tag size="small" :type="syncResult.ok ? 'success' : 'danger'" effect="plain">
                         {{ syncResult.ok ? `同步 ${syncResult.data} 条` : `code ${syncResult.code}` }}
                     </el-tag>
                 </div>
@@ -220,7 +220,7 @@ onMounted(() => {
                 <div v-if="rebuildResult?.ok && rebuildResult.data" class="cs__op-result">
                     <el-tag size="small" effect="plain">{{ rebuildResult.data.fromIndex }}</el-tag>
                     <span>→</span>
-                    <el-tag size="small" type="success" effect="dark">{{ rebuildResult.data.toIndex }}</el-tag>
+                    <el-tag size="small" type="success" effect="plain">{{ rebuildResult.data.toIndex }}</el-tag>
                     <el-tag size="small" effect="plain">{{ thousand(rebuildResult.data.movedDocs) }} 条</el-tag>
                 </div>
             </div>
@@ -232,7 +232,7 @@ onMounted(() => {
                     <el-button size="small" @click="syncOne()">重同步</el-button>
                 </div>
                 <div v-if="syncOneResult" class="cs__op-result">
-                    <el-tag size="small" :type="syncOneResult.ok ? 'success' : 'danger'" effect="dark">
+                    <el-tag size="small" :type="syncOneResult.ok ? 'success' : 'danger'" effect="plain">
                         {{ syncOneResult.ok ? '已完成' : `code ${syncOneResult.code}` }}
                     </el-tag>
                 </div>
@@ -246,22 +246,21 @@ onMounted(() => {
     display: flex;
     align-items: center;
     gap: 14px;
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
-    border-left: 4px solid #c9cdd6;
+    border-left: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 16px 18px;
     margin-bottom: 14px;
 }
 
 .cs__state--ok {
-    border-left-color: #16a34a;
+    border-left-color: var(--lab-success);
 }
 
 .cs__state--bad {
-    border-left-color: #dc4a4a;
-    background: #fffbfb;
+    border-left-color: var(--lab-danger);
+    background: var(--lab-card);
 }
 
 .cs__state-icon {
@@ -271,20 +270,20 @@ onMounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
-    font-weight: 700;
-    background: #f0f2f6;
-    color: #7a869a;
+    font-size: 16px;
+    font-weight: 600;
+    background: var(--lab-border);
+    color: var(--lab-muted);
 }
 
 .cs__state--ok .cs__state-icon {
-    background: #e6f7ee;
-    color: #16a34a;
+    background: var(--lab-success-soft);
+    color: var(--lab-success);
 }
 
 .cs__state--bad .cs__state-icon {
-    background: #ffece8;
-    color: #dc4a4a;
+    background: var(--lab-danger-soft);
+    color: var(--lab-danger);
 }
 
 .cs__state-title {
@@ -306,7 +305,7 @@ onMounted(() => {
 }
 
 .cs__state-index {
-    font-family: Menlo, Consolas, monospace;
+    font-family: var(--lab-font-mono);
     font-size: 12px;
     color: var(--lab-text);
     margin-top: 2px;
@@ -320,10 +319,9 @@ onMounted(() => {
 }
 
 .cs__chart {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 12px 14px;
 }
 
@@ -335,29 +333,28 @@ onMounted(() => {
 }
 
 .cs__diff {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 12px;
     text-align: center;
 }
 
 .cs__diff-value {
-    font-size: 24px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
 }
 
 .cs__diff-value--miss {
-    color: #3d6ff5;
+    color: var(--lab-primary);
 }
 
 .cs__diff-value--stale {
-    color: #d98900;
+    color: var(--lab-warn);
 }
 
 .cs__diff-value--orphan {
-    color: #dc4a4a;
+    color: var(--lab-danger);
 }
 
 .cs__diff-label {
@@ -373,10 +370,9 @@ onMounted(() => {
 }
 
 .cs__op {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 14px 16px;
     display: flex;
     flex-direction: column;

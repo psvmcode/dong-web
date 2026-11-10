@@ -201,7 +201,7 @@ onMounted(() => {
             </div>
             <div class="mc__layers">
                 <EChart v-if="layerChart" :option="layerChart" :height="200" />
-                <el-skeleton v-else :loading="statLoading" animated />
+                <el-skeleton v-else :loading="statLoading" />
             </div>
         </div>
 
@@ -273,7 +273,7 @@ onMounted(() => {
             </el-form>
             <div v-if="probeResult" class="mc__probe">
                 <el-tag size="small" effect="plain">最后一次耗时 {{ probeResult.elapsed }} ms</el-tag>
-                <el-tag size="small" :type="probeResult.ok ? 'success' : 'danger'" effect="dark">
+                <el-tag size="small" :type="probeResult.ok ? 'success' : 'danger'" effect="plain">
                     {{ probeResult.ok ? 'code 0' : `code ${probeResult.code}` }}
                 </el-tag>
                 <span class="lab-mono">{{ probeResult.data }}</span>
@@ -297,10 +297,9 @@ onMounted(() => {
 
 .mc__gauge,
 .mc__layers {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 12px 14px;
 }
 
@@ -318,29 +317,28 @@ onMounted(() => {
 }
 
 .mc__counter {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
-    border-left: 3px solid #3d6ff5;
+    border-left: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 12px 14px;
 }
 
 .mc__counter--warn {
-    border-left-color: #f2b94b;
+    border-left-color: var(--lab-warn);
 }
 
 .mc__counter--good {
-    border-left-color: #16a34a;
+    border-left-color: var(--lab-success);
 }
 
 .mc__counter--bad {
-    border-left-color: #dc4a4a;
+    border-left-color: var(--lab-danger);
 }
 
 .mc__counter-value {
-    font-size: 24px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
 }
 
 .mc__counter-label {
@@ -358,9 +356,9 @@ onMounted(() => {
 
 .mc__compare-card {
     border: 1px solid var(--lab-border);
-    border-radius: 10px;
+    border-radius: var(--lab-radius);
     padding: 14px;
-    background: #fbfcfe;
+    background: #fafbfc;
 }
 
 .mc__compare-title {
@@ -369,17 +367,17 @@ onMounted(() => {
 }
 
 .mc__compare-num {
-    font-size: 32px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
     margin: 6px 0 2px;
 }
 
 .mc__compare-num--bad {
-    color: #dc4a4a;
+    color: var(--lab-danger);
 }
 
 .mc__compare-num--good {
-    color: #16a34a;
+    color: var(--lab-success);
 }
 
 .mc__compare-hint {
@@ -390,14 +388,14 @@ onMounted(() => {
 .mc__compare-raw {
     margin: 10px 0 0;
     padding: 10px;
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
-    border-radius: 8px;
-    font-family: Menlo, Consolas, monospace;
+    border-radius: var(--lab-radius);
+    font-family: var(--lab-font-mono);
     font-size: 11px;
     max-height: 160px;
     overflow: auto;
-    color: #4e5969;
+    color: var(--lab-text-2);
 }
 
 .mc__probe {
@@ -411,10 +409,10 @@ onMounted(() => {
 .mc__raw {
     margin: 0;
     padding: 10px 12px;
-    background: #fbfcfe;
+    background: #fafbfc;
     border: 1px solid var(--lab-border);
-    border-radius: 8px;
-    font-family: Menlo, Consolas, monospace;
+    border-radius: var(--lab-radius);
+    font-family: var(--lab-font-mono);
     font-size: 12px;
     max-height: 200px;
     overflow: auto;

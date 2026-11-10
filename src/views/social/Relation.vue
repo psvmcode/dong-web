@@ -187,7 +187,7 @@ onMounted(loadRelations);
                         <el-button size="small" :icon="RefreshRight" @click="loadRelations">刷新关系</el-button>
                     </el-form>
                     <div class="lab-row" style="margin-top: 8px">
-                        <el-tag v-for="id in common" :key="id" size="small" effect="light" type="warning">
+                        <el-tag v-for="id in common" :key="id" size="small" effect="plain" type="warning">
                             实验员 {{ id % 100 }}
                         </el-tag>
                         <span v-if="common.length === 0" class="lab-hint">没有共同关注，或还没查询</span>
@@ -214,10 +214,9 @@ onMounted(loadRelations);
 }
 
 .rl__panel {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 14px 16px;
 }
 
@@ -249,7 +248,7 @@ onMounted(loadRelations);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--lab-text);
     font-weight: 600;
     flex: 0 0 32px;
 }

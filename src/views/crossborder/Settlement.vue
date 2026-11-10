@@ -245,20 +245,23 @@ onMounted(refresh);
         <div class="lab-card">
             <div class="lab-card__title">批次列表</div>
             <el-table :data="batches" border stripe size="small" max-height="360">
-                <el-table-column label="批次号" min-width="180">
+                <el-table-column label="批次号" min-width="220">
                     <template #default="{ row }">
                         <el-link type="primary" @click="pick(row.batchNo)">{{ row.batchNo }}</el-link>
+                        <CopyButton :value="row.batchNo" />
                     </template>
                 </el-table-column>
                 <el-table-column prop="channel" label="渠道" width="90" />
                 <el-table-column prop="currency" label="币种" width="80" />
-                <el-table-column prop="totalCount" label="笔数" width="90" />
-                <el-table-column label="金额" width="130">
-                    <template #default="{ row }">{{ money(row.totalAmount) }}</template>
+                <el-table-column label="笔数" width="90" align="right">
+                    <template #default="{ row }"><span class="lab-num">{{ row.totalCount }}</span></template>
+                </el-table-column>
+                <el-table-column label="金额" width="130" align="right">
+                    <template #default="{ row }"><span class="lab-num">{{ money(row.totalAmount) }}</span></template>
                 </el-table-column>
                 <el-table-column label="状态" width="110">
                     <template #default="{ row }">
-                        <el-tag :type="row.status === 'SETTLED' ? 'success' : row.status === 'CLOSED' ? 'info' : 'warning'" size="small">
+                        <el-tag :type="row.status === 'SETTLED' ? 'success' : row.status === 'CLOSED' ? 'info' : 'warning'" size="small" effect="plain">
                             {{ row.status }}
                         </el-tag>
                     </template>
@@ -296,12 +299,8 @@ onMounted(refresh);
             </div>
         </div>
 
-        <el-alert
-            type="info"
-            :closable="false"
-            show-icon
-            title="流程顺序"
-            description="先在账户页开户，再到汇款页汇出并走到 FUNDS_DEBITED，最后回到这里创建批次并归集清算——三个阶段缺一步，批次里就是空的。"
-        />
+        <p class="lab-hint">
+            流程顺序：先在账户页开户，再到汇款页汇出并走到 FUNDS_DEBITED，最后回到这里创建批次并归集清算——三个阶段缺一步，批次里就是空的。
+        </p>
     </div>
 </template>

@@ -171,7 +171,10 @@ onMounted(() => {
             <div class="lab-card">
                 <div class="lab-card__title">差异类型分布</div>
                 <EChart v-if="diffChart" :option="diffChart" :height="240" />
-                <div v-else class="lab-hint">暂无差异，把差错率调高再跑一次</div>
+                <div v-else class="lab-empty">
+                    <div class="lab-empty__title">暂无差异</div>
+                    把渠道回单的差错率调高，再跑一次对账就能看到差异明细。
+                </div>
             </div>
             <div class="lab-card">
                 <div class="lab-card__title">对账总览</div>
@@ -205,13 +208,18 @@ onMounted(() => {
                 </el-form-item>
             </el-form>
             <el-table :data="reportRows" border stripe size="small" max-height="360">
-                <el-table-column prop="remittanceNo" label="汇款单号" min-width="180" show-overflow-tooltip />
-                <el-table-column prop="diffType" label="差异类型" min-width="160" />
-                <el-table-column label="本地金额" width="120">
-                    <template #default="{ row }">{{ money(row.localAmount) }}</template>
+                <el-table-column label="汇款单号" min-width="220" show-overflow-tooltip>
+                    <template #default="{ row }">
+                        <span class="lab-mono">{{ row.remittanceNo }}</span>
+                        <CopyButton :value="row.remittanceNo" />
+                    </template>
                 </el-table-column>
-                <el-table-column label="渠道金额" width="120">
-                    <template #default="{ row }">{{ money(row.channelAmount) }}</template>
+                <el-table-column prop="diffType" label="差异类型" min-width="160" />
+                <el-table-column label="本地金额" width="120" align="right">
+                    <template #default="{ row }"><span class="lab-num">{{ money(row.localAmount) }}</span></template>
+                </el-table-column>
+                <el-table-column label="渠道金额" width="120" align="right">
+                    <template #default="{ row }"><span class="lab-num">{{ money(row.channelAmount) }}</span></template>
                 </el-table-column>
                 <el-table-column label="差额" width="120">
                     <template #default="{ row }">{{ money(row.diffAmount) }}</template>

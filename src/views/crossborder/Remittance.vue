@@ -198,10 +198,10 @@ function loadList(): void {
                     <el-form-item label="锁汇报价">
                         <el-input v-model="form.quoteNo" placeholder="留空则由后端询价" />
                     </el-form-item>
-                    <el-button type="primary" size="large" class="rm__submit" @click="submit">提交汇款</el-button>
+                    <el-button type="primary" size="small" class="rm__submit" @click="submit">提交汇款</el-button>
                 </el-form>
                 <div v-if="createResult" class="rm__result">
-                    <el-tag :type="createResult.ok ? 'success' : 'danger'" effect="dark">
+                    <el-tag :type="createResult.ok ? 'success' : 'danger'" effect="plain">
                         {{ createResult.ok ? '受理成功' : `code ${createResult.code}` }}
                     </el-tag>
                     <span>{{ createResult.message }}</span>
@@ -228,10 +228,9 @@ function loadList(): void {
 }
 
 .rm__panel {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 14px 16px;
     margin-bottom: 12px;
 }
@@ -247,28 +246,28 @@ function loadList(): void {
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    background: linear-gradient(135deg, #123f5e, #1b7fa6);
-    border-radius: 14px;
+    background: #fafbfc;
+    border-radius: var(--lab-radius);
     padding: 20px 24px;
-    color: #fff;
+    color: var(--lab-text);
     margin-bottom: 14px;
 }
 
 .rm__amount-label {
     font-size: 12px;
-    opacity: 0.75;
+
 }
 
 .rm__amount-value {
-    font-size: 34px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
     margin-top: 6px;
 }
 
 .rm__amount-value span {
     font-size: 17px;
     margin-right: 3px;
-    opacity: 0.85;
+
 }
 
 .rm__hero-meta {
@@ -277,15 +276,15 @@ function loadList(): void {
 
 .rm__hero-hint {
     font-size: 12px;
-    opacity: 0.72;
+
     margin-top: 4px;
 }
 
 .rm__hint {
     margin-top: 12px;
     padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.16);
-    border-radius: 8px;
+    background: #fafbfc;
+    border-radius: var(--lab-radius);
     font-size: 12px;
 }
 

@@ -1,31 +1,31 @@
 /**
  * 场景化展示用的小工具。
  *
- * <p>实验室没有素材图，也没有用户头像，但产品界面不能因此变成一堆灰块。
- * 这里用「分类配色 + emoji」和「按 id 稳定生成头像色」两招，
- * 让同一个商品、同一个用户在每次刷新后长得一样——随机色会让人以为是新数据。
+ * <p>页面收敛成工具界面后，分类图标、渐变底色与彩色头像都不再提供信息：
+ * 它们只让同一个商品、同一个用户每次刷新看起来一样，却占用了大量视觉注意力。
+ * 这里统一返回中性浅底，颜色只承担语义（成功/警告/失败），装饰交给留白与边框。
  */
 
-/** 分类图标与渐变底色。 */
+/** 分类展示信息。保留分类键以兼容已有调用，图标停用、底色统一中性浅灰。 */
 const CATEGORY_META: Record<string, { icon: string; gradient: string }> = {
-    手机数码: { icon: '📱', gradient: 'linear-gradient(135deg,#e8f1ff,#cfe0ff)' },
-    电脑办公: { icon: '💻', gradient: 'linear-gradient(135deg,#eef0ff,#dcd9ff)' },
-    家用电器: { icon: '🧊', gradient: 'linear-gradient(135deg,#e6f7ff,#cdeeff)' },
-    服饰鞋包: { icon: '👗', gradient: 'linear-gradient(135deg,#ffeff6,#ffd9e8)' },
-    食品生鲜: { icon: '🍚', gradient: 'linear-gradient(135deg,#f1ffec,#dcf7d0)' },
-    图书文娱: { icon: '📚', gradient: 'linear-gradient(135deg,#fff7e6,#ffe9bd)' },
-    运动户外: { icon: '⛺', gradient: 'linear-gradient(135deg,#ecfff5,#c9f5de)' },
-    美妆个护: { icon: '💄', gradient: 'linear-gradient(135deg,#ffeff1,#ffd4da)' },
-    家居家装: { icon: '🛋', gradient: 'linear-gradient(135deg,#f6f1ec,#e6ddd2)' },
-    母婴玩具: { icon: '🧸', gradient: 'linear-gradient(135deg,#fff3f3,#ffe0e0)' },
-    外设: { icon: '🖱', gradient: 'linear-gradient(135deg,#eef2f7,#dde4ee)' },
+    手机数码: { icon: '', gradient: '#fafbfc' },
+    电脑办公: { icon: '', gradient: '#fafbfc' },
+    家用电器: { icon: '', gradient: '#fafbfc' },
+    服饰鞋包: { icon: '', gradient: '#fafbfc' },
+    食品生鲜: { icon: '', gradient: '#fafbfc' },
+    图书文娱: { icon: '', gradient: '#fafbfc' },
+    运动户外: { icon: '', gradient: '#fafbfc' },
+    美妆个护: { icon: '', gradient: '#fafbfc' },
+    家居家装: { icon: '', gradient: '#fafbfc' },
+    母婴玩具: { icon: '', gradient: '#fafbfc' },
+    外设: { icon: '', gradient: '#fafbfc' },
 };
 
-/** 兜底配色，遇到没登记过的分类也能看。 */
-const FALLBACK = { icon: '📦', gradient: 'linear-gradient(135deg,#f2f4f8,#e2e7ef)' };
+/** 兜底配色，遇到没登记过的分类也不报错。 */
+const FALLBACK = { icon: '', gradient: '#fafbfc' };
 
 /**
- * 取分类的图标与底色。
+ * 取分类的展示信息。
  *
  * @param category 分类名
  */
@@ -33,25 +33,14 @@ export function categoryMeta(category: string): { icon: string; gradient: string
     return CATEGORY_META[category] ?? FALLBACK;
 }
 
-/** 头像色板。 */
-const AVATAR_COLORS = [
-    '#3d6ff5',
-    '#16a34a',
-    '#d98900',
-    '#dc4a4a',
-    '#7c5cf5',
-    '#0ea5a5',
-    '#e0638a',
-    '#5a7d9a',
-];
-
 /**
- * 按 id 稳定生成头像底色。
+ * 头像占位底色。统一中性浅灰，不再按 id 生成彩色块。
  *
  * @param id 用户 id 或任意整数
  */
 export function avatarColor(id: number): string {
-    return AVATAR_COLORS[Math.abs(id) % AVATAR_COLORS.length];
+    void id;
+    return '#fafbfc';
 }
 
 /**

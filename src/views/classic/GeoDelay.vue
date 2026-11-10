@@ -145,9 +145,6 @@ onMounted(() => {
             <div class="geo__map-card">
                 <div class="geo__map-title">{{ geo.city }} · 半径 {{ geo.radiusKm }} km</div>
                 <div class="geo__map">
-                    <div class="geo__ring"></div>
-                    <div class="geo__ring geo__ring--inner"></div>
-                    <div class="geo__center"></div>
                     <el-tooltip
                         v-for="item in nearby"
                         :key="item.member"
@@ -215,10 +212,10 @@ onMounted(() => {
                 <div class="geo__panel-title">两点距离</div>
                 <div class="lab-row">
                     <el-input v-model="geo.first" style="width: 110px" />
-                    <span>↔</span>
+                    <span>至</span>
                     <el-input v-model="geo.second" style="width: 110px" />
                     <el-button size="small" @click="doDistance">算</el-button>
-                    <el-tag v-if="distanceResult?.ok" size="small" type="success" effect="dark">
+                    <el-tag v-if="distanceResult?.ok" size="small" type="success" effect="plain">
                         {{ (distanceResult.data ?? 0).toFixed(2) }} km
                     </el-tag>
                 </div>
@@ -268,7 +265,7 @@ onMounted(() => {
 
             <div v-if="taken.length > 0" class="dq__taken">
                 <div class="dq__taken-title">本轮取到 {{ taken.length }} 条</div>
-                <el-tag v-for="(item, index) in taken" :key="index" size="small" effect="light" type="success">
+                <el-tag v-for="(item, index) in taken" :key="index" size="small" effect="plain" type="success">
                     {{ item }}
                 </el-tag>
             </div>
@@ -294,10 +291,9 @@ onMounted(() => {
 .geo__map-card,
 .geo__panel,
 .geo__list {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 14px 16px;
 }
 
@@ -310,8 +306,8 @@ onMounted(() => {
 .geo__map {
     position: relative;
     height: 320px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #eef4fb, #e4ecf7);
+    border-radius: var(--lab-radius);
+    background: #fafbfc;
     overflow: hidden;
 }
 
@@ -322,14 +318,14 @@ onMounted(() => {
     width: 90%;
     height: 90%;
     transform: translate(-50%, -50%);
-    border: 1px dashed #b9cdf7;
+    border: 1px dashed var(--lab-primary);
     border-radius: 50%;
 }
 
 .geo__ring--inner {
     width: 45%;
     height: 45%;
-    border-color: #cfdcf8;
+    border-color: var(--lab-primary-soft);
 }
 
 .geo__center {
@@ -340,8 +336,7 @@ onMounted(() => {
     height: 12px;
     transform: translate(-50%, -50%);
     border-radius: 50%;
-    background: #3d6ff5;
-    box-shadow: 0 0 0 6px rgba(61, 111, 245, 0.18);
+    background: var(--lab-primary);
 }
 
 .geo__pin {
@@ -351,10 +346,9 @@ onMounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--lab-text);
     font-size: 11px;
     font-weight: 600;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
     cursor: pointer;
 }
 
@@ -364,7 +358,7 @@ onMounted(() => {
     top: 50%;
     transform: translate(-50%, -50%);
     font-size: 12px;
-    color: #7a869a;
+    color: var(--lab-muted);
 }
 
 .geo__panel-title {
@@ -378,7 +372,7 @@ onMounted(() => {
     align-items: center;
     gap: 10px;
     padding: 9px 0;
-    border-bottom: 1px solid #f2f4f8;
+    border-bottom: 1px solid var(--lab-border);
 }
 
 .geo__row:last-child {
@@ -392,7 +386,7 @@ onMounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--lab-text);
     font-weight: 600;
     flex: 0 0 34px;
 }
@@ -414,14 +408,13 @@ onMounted(() => {
 
 .geo__row-dist {
     font-weight: 600;
-    color: #3d6ff5;
+    color: var(--lab-primary);
 }
 
 .dq {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 16px 18px;
 }
 
@@ -452,9 +445,9 @@ onMounted(() => {
 }
 
 .dq__count-value {
-    font-size: 30px;
-    font-weight: 700;
-    color: #3d6ff5;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--lab-primary);
 }
 
 .dq__count-label {
@@ -465,9 +458,9 @@ onMounted(() => {
 .dq__taken {
     margin-top: 12px;
     padding: 12px;
-    background: #f2fbf6;
-    border: 1px solid #b6e6c9;
-    border-radius: 10px;
+    background: #fafbfc;
+    border: 1px solid var(--lab-success);
+    border-radius: var(--lab-radius);
 }
 
 .dq__taken-title {

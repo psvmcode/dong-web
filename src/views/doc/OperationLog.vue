@@ -157,9 +157,19 @@ onMounted(refresh);
         <div class="lab-card">
             <div class="lab-card__title">日志列表</div>
             <el-table :data="rows" border stripe size="small" max-height="420">
-                <el-table-column prop="id" label="文档 id" min-width="200" show-overflow-tooltip />
+                <el-table-column label="文档 id" min-width="240" show-overflow-tooltip>
+                    <template #default="{ row }">
+                        <span class="lab-mono">{{ row.id }}</span>
+                        <CopyButton :value="row.id" />
+                    </template>
+                </el-table-column>
                 <el-table-column prop="bizType" label="业务类型" width="120" />
-                <el-table-column prop="bizId" label="业务 id" min-width="160" show-overflow-tooltip />
+                <el-table-column label="业务 id" min-width="200" show-overflow-tooltip>
+                    <template #default="{ row }">
+                        <span class="lab-mono">{{ row.bizId }}</span>
+                        <CopyButton :value="row.bizId" />
+                    </template>
+                </el-table-column>
                 <el-table-column prop="action" label="动作" width="110" />
                 <el-table-column prop="operator" label="操作人" width="130" />
                 <el-table-column label="detail" min-width="240">

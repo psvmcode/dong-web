@@ -72,8 +72,8 @@ onMounted(() => {
                 <el-menu
                     :default-active="activePath"
                     background-color="transparent"
-                    text-color="#b9c5da"
-                    active-text-color="#ffffff"
+                    text-color="#4e5969"
+                    active-text-color="#2f6feb"
                     router
                 >
                     <el-sub-menu v-for="group in menuGroups" :key="group.key" :index="group.key">
@@ -97,20 +97,20 @@ onMounted(() => {
                     <div class="lab-header__desc">{{ current?.desc ?? '' }}</div>
                 </div>
                 <div class="lab-row">
-                    <el-tag size="small" effect="plain" round>后端 127.0.0.1:8090（vite 代理）</el-tag>
+                    <span class="lab-hint lab-mono">127.0.0.1:8090</span>
                     <el-tooltip
                         v-if="downComponents.length > 0"
                         :content="`以下组件不可用：${downComponents.join('、')}。业务接口仍可用，只是相关实验会返回 1004/1005。`"
                         placement="bottom"
                     >
-                        <el-tag type="warning" size="small" effect="dark" round>{{ downComponents.length }} 个组件不可用</el-tag>
+                        <el-tag type="warning" size="small" effect="plain">{{ downComponents.length }} 个组件不可用</el-tag>
                     </el-tooltip>
                     <el-tooltip v-if="probe?.note" :content="probe.note" placement="bottom">
-                        <el-tag :type="online ? 'success' : 'danger'" size="small" effect="dark" round>
+                        <el-tag :type="online ? 'success' : 'danger'" size="small" effect="plain">
                             {{ online ? (probe?.status === 'UP' ? '后端在线' : '后端在线（降级）') : '后端离线' }}
                         </el-tag>
                     </el-tooltip>
-                    <el-tag v-else :type="online ? 'success' : 'danger'" size="small" effect="dark" round>
+                    <el-tag v-else :type="online ? 'success' : 'danger'" size="small" effect="plain">
                         {{ online ? '后端在线' : '后端离线' }}
                     </el-tag>
                     <el-button size="small" :icon="Refresh" :loading="healthLoading" @click="refreshHealth">
@@ -121,11 +121,7 @@ onMounted(() => {
             </header>
 
             <main class="lab-content">
-                <router-view v-slot="{ Component }">
-                    <transition name="fade" mode="out-in">
-                        <component :is="Component" />
-                    </transition>
-                </router-view>
+                <router-view />
             </main>
         </div>
 
@@ -134,22 +130,8 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.16s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-    opacity: 0;
-}
-
-:deep(.el-menu-item.is-active) {
-    background: linear-gradient(90deg, rgba(61, 111, 245, 0.9), rgba(61, 111, 245, 0.55));
-}
-
 :deep(.el-sub-menu__title:hover),
 :deep(.el-menu-item:hover) {
-    background: rgba(255, 255, 255, 0.06);
+    background: #fafbfc;
 }
 </style>

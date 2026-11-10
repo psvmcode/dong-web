@@ -3,21 +3,30 @@
  *
  * <p>只用 CSS 变量与原生选择器，不引 sass：
  * 一个构建环节的依赖，换来的只是嵌套语法，不值得。
+ *
+ * <p>设计基线是「工具界面」而不是「营销页面」：
+ * 白底、细边框、单一主色、无阴影无渐变无位移动画。
+ * 颜色只承担语义（成功/警告/失败/主操作），不承担装饰；
+ * 所有场景共用这一套变量，避免出现某些页面像产品、某些页面像后台。
  */
 :root {
-    --lab-bg: #f3f5fa;
+    --lab-bg: #f5f6f8;
     --lab-card: #ffffff;
-    --lab-border: #e8ecf4;
-    --lab-text: #1f2733;
-    --lab-muted: #7a869a;
-    --lab-primary: #3d6ff5;
-    --lab-primary-soft: #eaf0ff;
-    --lab-success: #16a34a;
-    --lab-warn: #d98900;
-    --lab-danger: #dc4a4a;
-    --lab-radius: 12px;
-    --lab-shadow: 0 1px 2px rgba(31, 39, 51, 0.04), 0 6px 18px rgba(31, 39, 51, 0.05);
-    --lab-shadow-hover: 0 2px 6px rgba(31, 39, 51, 0.06), 0 12px 28px rgba(31, 39, 51, 0.09);
+    --lab-border: #e3e6eb;
+    --lab-border-strong: #cfd4dc;
+    --lab-text: #1f2329;
+    --lab-text-2: #4e5969;
+    --lab-muted: #8a9099;
+    --lab-primary: #2f6feb;
+    --lab-primary-soft: #eef4ff;
+    --lab-success: #1a7f4b;
+    --lab-success-soft: #eaf7ef;
+    --lab-warn: #b26a00;
+    --lab-warn-soft: #fff6e6;
+    --lab-danger: #c0392b;
+    --lab-danger-soft: #fdf0ee;
+    --lab-radius: 6px;
+    --lab-font-mono: 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
 }
 
 * {
@@ -36,7 +45,7 @@ body {
     color: var(--lab-text);
     font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial,
         sans-serif;
-    font-size: 14px;
+    font-size: 13px;
     -webkit-font-smoothing: antialiased;
 }
 
@@ -56,39 +65,39 @@ body {
 }
 
 .lab-aside {
-    width: 240px;
-    flex: 0 0 240px;
+    width: 224px;
+    flex: 0 0 224px;
     height: 100vh;
-    background: linear-gradient(180deg, #16243d 0%, #111c31 55%, #0d1626 100%);
-    color: #c7d2e4;
+    background: var(--lab-card);
+    border-right: 1px solid var(--lab-border);
+    color: var(--lab-text-2);
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
 
 .lab-aside__brand {
-    padding: 22px 20px 18px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    padding: 16px 16px 14px;
+    border-bottom: 1px solid var(--lab-border);
 }
 
 .lab-aside__title {
-    font-size: 17px;
+    font-size: 14px;
     font-weight: 600;
-    color: #fff;
-    letter-spacing: 0.5px;
+    color: var(--lab-text);
 }
 
 .lab-aside__sub {
-    margin-top: 6px;
-    font-size: 12px;
-    color: #7e8ca6;
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--lab-muted);
     line-height: 1.5;
 }
 
 .lab-aside__menu {
     flex: 1;
     overflow-y: auto;
-    padding: 10px 10px 24px;
+    padding: 8px;
 }
 
 .lab-main {
@@ -101,10 +110,10 @@ body {
 }
 
 .lab-header {
-    flex: 0 0 60px;
-    height: 60px;
-    padding: 0 24px;
-    background: #fff;
+    flex: 0 0 52px;
+    height: 52px;
+    padding: 0 20px;
+    background: var(--lab-card);
     border-bottom: 1px solid var(--lab-border);
     display: flex;
     align-items: center;
@@ -113,12 +122,12 @@ body {
 }
 
 .lab-header__title {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
 }
 
 .lab-header__desc {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--lab-muted);
     margin-top: 2px;
 }
@@ -127,7 +136,7 @@ body {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 18px 24px 32px;
+    padding: 16px 20px 32px;
 }
 
 /* ------------------------------------------------------ 通用块 */
@@ -136,9 +145,8 @@ body {
     background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
-    padding: 16px 18px;
-    margin-bottom: 16px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
 }
 
 .lab-card--flush {
@@ -147,7 +155,7 @@ body {
 }
 
 .lab-card__title {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     margin-bottom: 4px;
     display: flex;
@@ -186,16 +194,36 @@ body {
 }
 
 @media (max-width: 960px) {
+    .lab-grid--4,
     .lab-grid--3,
     .lab-grid--2 {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    .lab-aside {
+        width: 60px;
+        flex-basis: 60px;
+    }
+
+    .lab-aside__brand,
+    .lab-aside__menu .el-sub-menu__title span,
+    .lab-aside__menu .el-menu-item span {
+        display: none;
+    }
+
+    .lab-header {
+        padding: 0 12px;
+    }
+
+    .lab-content {
+        padding: 12px 12px 28px;
     }
 }
 
 .lab-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
 }
 
@@ -208,41 +236,96 @@ body {
 }
 
 .lab-mono {
-    font-family: 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+    font-family: var(--lab-font-mono);
     font-size: 12px;
+    /* 单号类文本整段可选，手动拖选复制时不会漏字符 */
+    user-select: all;
+}
+
+/* 数字统一等宽，表格与指标卡里的数值才对得齐 */
+.lab-num {
+    font-variant-numeric: tabular-nums;
+    font-family: var(--lab-font-mono);
+    text-align: right;
 }
 
 .lab-hint {
     font-size: 12px;
     color: var(--lab-muted);
-    line-height: 1.7;
+    line-height: 1.6;
 }
 
 .lab-metric {
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 600;
-    letter-spacing: 0.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 统一的空态：不插图不放 emoji，一句话说明怎么开始 */
+.lab-empty {
+    padding: 28px 16px;
+    text-align: center;
+    color: var(--lab-muted);
+    font-size: 12px;
+    line-height: 1.7;
+    border: 1px dashed var(--lab-border);
+    border-radius: var(--lab-radius);
+    background: #fafbfc;
+}
+
+.lab-empty__title {
+    color: var(--lab-text-2);
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+/* 状态点：替代大色块徽标，颜色只表达语义 */
+.lab-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    margin-right: 6px;
+    background: var(--lab-muted);
+    vertical-align: middle;
+}
+
+.lab-dot--good {
+    background: var(--lab-success);
+}
+
+.lab-dot--warn {
+    background: var(--lab-warn);
+}
+
+.lab-dot--bad {
+    background: var(--lab-danger);
+}
+
+.lab-dot--accent {
+    background: var(--lab-primary);
 }
 
 /* ------------------------------------------------------ 结果面板 */
 
 .result-box {
     border: 1px solid var(--lab-border);
-    border-radius: 10px;
-    background: #fbfcfe;
+    border-radius: var(--lab-radius);
+    background: var(--lab-card);
     overflow: hidden;
 }
 
 .result-box--error {
-    border-color: #f6cfcf;
-    background: #fff8f8;
+    border-color: #eec9c4;
+    background: #fffafa;
 }
 
 .result-box__head {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 12px;
+    padding: 8px 12px;
     border-bottom: 1px solid var(--lab-border);
     font-size: 12px;
     color: var(--lab-muted);
@@ -251,15 +334,15 @@ body {
 
 .result-box__body {
     margin: 0;
-    padding: 12px;
+    padding: 10px 12px;
     max-height: 460px;
     overflow: auto;
-    font-family: 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+    font-family: var(--lab-font-mono);
     font-size: 12px;
-    line-height: 1.65;
+    line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-all;
-    color: #243044;
+    color: var(--lab-text-2);
 }
 
 .result-box--text .result-box__body {
@@ -267,26 +350,29 @@ body {
     font-size: 13px;
 }
 
+.result-box__empty {
+    padding: 20px 12px;
+    text-align: center;
+    color: var(--lab-muted);
+    font-size: 12px;
+}
+
 /* ------------------------------------------------------ 场景卡片 */
 
 .scene-card {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    padding: 16px;
+    padding: 14px 16px;
     cursor: pointer;
-    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
-    box-shadow: var(--lab-shadow);
 }
 
 .scene-card:hover {
-    transform: translateY(-2px);
-    border-color: #c9d7f7;
-    box-shadow: var(--lab-shadow-hover);
+    border-color: var(--lab-primary);
 }
 
 .scene-card__title {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     display: flex;
     align-items: center;
@@ -294,11 +380,11 @@ body {
 }
 
 .scene-card__desc {
-    margin-top: 8px;
+    margin-top: 6px;
     font-size: 12px;
     color: var(--lab-muted);
-    line-height: 1.7;
-    min-height: 42px;
+    line-height: 1.6;
+    min-height: 38px;
 }
 
 .scene-card__tags {
@@ -312,27 +398,48 @@ body {
 
 .el-menu {
     border-right: none !important;
+    background: transparent !important;
 }
 
 .el-menu-item,
 .el-sub-menu__title {
-    height: 40px !important;
-    line-height: 40px !important;
-    border-radius: 8px;
+    height: 34px !important;
+    line-height: 34px !important;
+    border-radius: var(--lab-radius);
     margin-bottom: 2px;
+    font-size: 13px !important;
+}
+
+.el-menu-item.is-active {
+    background: var(--lab-primary-soft) !important;
+    color: var(--lab-primary) !important;
+    font-weight: 600;
 }
 
 .el-table {
-    font-size: 13px;
+    font-size: 12px;
+}
+
+.el-table th.el-table__cell {
+    color: var(--lab-text-2);
+    font-weight: 600;
+    background: #fafbfc;
+}
+
+/* 表格默认空态统一成克制的提示样式，避免各页面出现一块突兀的大图标 */
+.el-table__empty-text {
+    color: var(--lab-muted);
+    font-size: 12px;
+    line-height: 1.6;
 }
 
 .el-form-item {
-    margin-bottom: 14px;
+    margin-bottom: 12px;
 }
 
 .el-form-item__label {
-    font-size: 13px;
-    color: #55617a !important;
+    font-size: 12px;
+    color: var(--lab-text-2) !important;
 }
 
 .el-descriptions__label {
@@ -343,9 +450,18 @@ body {
 .el-card {
     --el-card-border-color: var(--lab-border);
     border-radius: var(--lab-radius) !important;
+    box-shadow: none !important;
+}
+
+/* 主色统一收敛，避免各页面自带一套蓝 */
+.el-button--primary {
+    --el-button-bg-color: var(--lab-primary);
+    --el-button-border-color: var(--lab-primary);
+    --el-button-hover-bg-color: #255cc9;
+    --el-button-hover-border-color: #255cc9;
 }
 
 .lab-chart {
     width: 100%;
-    height: 240px;
+    height: 220px;
 }

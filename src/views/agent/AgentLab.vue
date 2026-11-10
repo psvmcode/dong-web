@@ -449,8 +449,8 @@ onMounted(() => {
 <style scoped>
 .stream-box {
     border: 1px solid var(--lab-border);
-    border-radius: 10px;
-    background: #fbfcfe;
+    border-radius: var(--lab-radius);
+    background: #fafbfc;
     max-height: 340px;
     overflow: auto;
     padding: 10px 12px;
@@ -461,7 +461,7 @@ onMounted(() => {
     gap: 8px;
     align-items: flex-start;
     padding: 6px 0;
-    border-bottom: 1px dashed #eef1f7;
+    border-bottom: 1px dashed var(--lab-border);
 }
 
 .stream-row:last-child {
@@ -475,15 +475,15 @@ onMounted(() => {
 
 .session-item {
     padding: 8px 10px;
-    border-radius: 8px;
+    border-radius: var(--lab-radius);
     cursor: pointer;
     margin-bottom: 6px;
-    background: #fbfcfe;
+    background: #fafbfc;
     border: 1px solid var(--lab-border);
 }
 
 .session-item--active {
     background: var(--lab-primary-soft);
-    border-color: #b9cdf7;
+    border-color: var(--lab-primary);
 }
 </style>

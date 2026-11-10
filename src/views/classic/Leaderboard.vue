@@ -109,7 +109,7 @@ async function clear() {
  * @param index 下标
  */
 function medal(index: number): string {
-    return ['🥇', '🥈', '🥉'][index] ?? '';
+    return ['', '', ''][index] ?? '';
 }
 
 /**
@@ -243,7 +243,7 @@ onMounted(refresh);
 
 <style scoped>
 .lb {
-    background: #f6f8fc;
+    background: #fafbfc;
     padding: 18px;
     border-radius: var(--lab-radius);
 }
@@ -253,26 +253,25 @@ onMounted(refresh);
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    background: linear-gradient(135deg, #2b3350, #4b3a72);
-    border-radius: 14px;
+    background: #fafbfc;
+    border-radius: var(--lab-radius);
     padding: 20px 24px;
-    color: #fff;
+    color: var(--lab-text);
     flex-wrap: wrap;
-    box-shadow: 0 8px 24px rgba(43, 51, 80, 0.24);
 }
 
 .lb__title {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
 }
 
 .lb__sub {
     margin-top: 6px;
     font-size: 13px;
-    opacity: 0.7;
+
 }
 
 .lb__podium {
@@ -284,10 +283,9 @@ onMounted(refresh);
 }
 
 .lb__podium-item {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 16px 12px 0;
     text-align: center;
 }
@@ -295,8 +293,8 @@ onMounted(refresh);
 .lb__podium-item--0 {
     order: 2;
     padding-top: 26px;
-    background: linear-gradient(180deg, #fff9e6, #fff);
-    border-color: #ffe08a;
+    background: #fafbfc;
+    border-color: #fafbfc;
 }
 
 .lb__podium-item--1 {
@@ -308,7 +306,7 @@ onMounted(refresh);
 }
 
 .lb__medal {
-    font-size: 28px;
+    font-size: 16px;
 }
 
 .lb__podium-avatar {
@@ -319,7 +317,7 @@ onMounted(refresh);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--lab-text);
     font-size: 20px;
     font-weight: 600;
 }
@@ -331,14 +329,14 @@ onMounted(refresh);
 
 .lb__podium-score {
     margin: 4px 0 8px;
-    font-size: 22px;
-    font-weight: 700;
-    color: #e1251b;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--lab-danger);
 }
 
 .lb__podium-base {
-    background: #f2f4f8;
-    border-radius: 10px 10px 0 0;
+    background: var(--lab-border);
+    border-radius: var(--lab-radius) 10px 0 0;
     padding: 8px 0;
     font-size: 12px;
     color: var(--lab-muted);
@@ -346,16 +344,15 @@ onMounted(refresh);
 }
 
 .lb__podium-item--0 .lb__podium-base {
-    background: #ffe08a;
-    color: #8a5a00;
+    background: #fafbfc;
+    color: var(--lab-warn);
     font-weight: 600;
 }
 
 .lb__panel {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 14px 16px;
     margin-top: 14px;
 }
@@ -372,7 +369,7 @@ onMounted(refresh);
     align-items: center;
     gap: 10px;
     padding: 9px 0;
-    border-bottom: 1px solid #f2f4f8;
+    border-bottom: 1px solid var(--lab-border);
 }
 
 .lb__row:last-child {
@@ -381,7 +378,7 @@ onMounted(refresh);
 
 .lb__rank {
     font-size: 15px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--lab-muted);
     text-align: center;
 }
@@ -393,7 +390,7 @@ onMounted(refresh);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--lab-text);
     font-weight: 600;
 }
 
@@ -404,7 +401,7 @@ onMounted(refresh);
 
 .lb__bar {
     height: 10px;
-    background: #f0f2f6;
+    background: var(--lab-border);
     border-radius: 5px;
     overflow: hidden;
 }
@@ -412,7 +409,7 @@ onMounted(refresh);
 .lb__bar-fill {
     height: 100%;
     border-radius: 5px;
-    background: linear-gradient(90deg, #b9cdf7, #3d6ff5);
+    background: #fafbfc;
 }
 
 .lb__score {
@@ -440,9 +437,9 @@ onMounted(refresh);
 }
 
 .lb__me-value {
-    font-size: 26px;
-    font-weight: 700;
-    color: #3d6ff5;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--lab-primary);
 }
 
 .lb__me-label {
@@ -461,7 +458,7 @@ onMounted(refresh);
 .lb__around-row--me {
     background: var(--lab-primary-soft);
     font-weight: 600;
-    color: #3d6ff5;
+    color: var(--lab-primary);
 }
 
 .lb__around-row span:last-child {

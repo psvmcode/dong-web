@@ -1,23 +1,23 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Lightning, Refresh, Timer } from '@element-plus/icons-vue';
+import { Refresh, Timer } from '@element-plus/icons-vue';
 import { runBurst, useApi } from '@/composables/useApi';
 import * as api from '@/api/seckill';
 import type { SeckillActivityResponse, SeckillOrderResponse, SeckillReceiptResponse } from '@/api/types';
 import { money, toDateTimeString } from '@/utils/format';
 
 /**
- * 秒杀会场。
+ * 秒杀活动。
  *
- * <p>这一页按秒杀频道的样子做：红黑配色、倒计时、库存条、大抢购按钮。
- * 之所以要做成这样，是因为秒杀的核心体验就是「点下去那一刻的结果」——
- * 抢到了、手慢了、还是重复下单，必须让用户在一个真实的动作里感受到，
- * 而不是在一张参数表单里读出来。
+ * <p>核心是「点下去那一刻的结果」：抢到了、手慢了、还是重复下单，
+ * 用一个真实的抢购动作直接给结论，再配库存、状态与并发压测数据。
+ * 会场式的红黑配色与假商品图只占屏幕不提供信息，已经全部去掉。
  */
 
 const activities = ref<SeckillActivityResponse[]>([]);
 const listLoading = ref(false);
+const buying = ref(false);
 const now = ref(Date.now());
 const userId = ref(1001);
 const burstForm = reactive({ threads: 20 });
@@ -145,17 +145,40 @@ async function loadActivities() {
  * @param row 活动
  */
 async function buy(row: SeckillActivityResponse) {
-    const res = await api.seckill(row.id, userId.value, 1);
-    const data = res.ok ? (res.data as SeckillReceiptResponse) : null;
-    receipt.value = {
-        visible: true,
-        ok: res.ok,
-        title: res.ok ? '抢到了' : '没抢到',
-        message: data?.message ?? res.message,
-        orderNo: data?.orderNo ?? '',
-    };
-    await loadActivities();
-    void callRuntime(api.runtime);
+    if (buying.value) {
+        return;
+    }
+    buying.value = true;
+    try {
+        const res = await api.seckill(row.id, userId.value, 1);
+        const data = res.ok ? (res.data as SeckillReceiptResponse) : null;
+        receipt.value = {
+            visible: true,
+            ok: res.ok,
+            title: res.ok ? '抢购成功' : '抢购未成功',
+            message: data?.message ?? res.message,
+            orderNo: data?.orderNo ?? '',
+        };
+        await loadActivities();
+        void callRuntime(api.runtime);
+    } finally {
+        buying.value = false;
+    }
+}
+
+/**
+ * 复制订单号，便于直接粘到下面的查询框或去日志里检索。
+ */
+async function copyOrderNo(text: string) {
+    if (!text) {
+        return;
+    }
+    try {
+        await navigator.clipboard.writeText(text);
+        ElMessage.success('订单号已复制');
+    } catch {
+        ElMessage.warning('浏览器未授权剪贴板，请手动复制');
+    }
 }
 
 /**
@@ -274,14 +297,11 @@ onUnmounted(() => {
         <div class="spike__banner">
             <div class="spike__banner-inner">
                 <div>
-                    <div class="spike__title">
-                        <el-icon><Lightning /></el-icon>
-                        限时秒杀
-                    </div>
-                    <div class="spike__subtitle">库存有限 · 先到先得 · 抢完即止</div>
+                    <div class="spike__title">秒杀活动</div>
+                    <div class="spike__subtitle">Lua 原子扣减 + 去重 + MQ 异步建单，抢购结果直接反映四道防线</div>
                 </div>
                 <div class="spike__timer">
-                    <span class="spike__timer-label">距结束</span>
+                    <span class="spike__timer-label">首场距结束</span>
                     <span class="spike__timer-value">{{ activities[0] ? countdown(activities[0].endTime) : '--:--:--' }}</span>
                 </div>
             </div>
@@ -296,7 +316,7 @@ onUnmounted(() => {
             <span class="lab-spacer" />
             <el-popover placement="bottom" width="420" trigger="click">
                 <template #reference>
-                    <el-button size="small" type="danger" plain>创建并开启示例活动</el-button>
+                    <el-button size="small">创建并开启示例活动</el-button>
                 </template>
                 <el-form size="small" label-width="86px">
                     <el-form-item label="商品 id">
@@ -314,51 +334,54 @@ onUnmounted(() => {
                     <el-form-item label="结束时间">
                         <el-input v-model="createForm.endTime" />
                     </el-form-item>
-                    <el-button type="danger" size="small" @click="seedActivity">创建并预热</el-button>
+                    <el-button type="primary" size="small" @click="seedActivity">创建并预热</el-button>
                 </el-form>
             </el-popover>
         </div>
 
-        <el-skeleton :loading="listLoading && activities.length === 0" animated>
+        <el-skeleton :loading="listLoading && activities.length === 0">
             <template #template>
                 <div class="spike__grid">
-                    <div v-for="i in 4" :key="i" class="spike__card">
-                        <el-skeleton-item variant="image" style="height: 150px" />
-                        <el-skeleton-item variant="text" style="margin-top: 10px" />
+                    <div v-for="i in 4" :key="i" class="spike__card" style="padding: 14px">
+                        <el-skeleton-item variant="text" style="width: 70%" />
+                        <el-skeleton-item variant="text" style="margin-top: 12px; width: 45%" />
                     </div>
                 </div>
             </template>
             <template #default>
                 <div v-if="activities.length > 0" class="spike__grid">
                     <article v-for="row in activities" :key="row.id" class="spike__card">
-                        <div class="spike__card-img">
-                            <span>⚡</span>
-                            <el-tag class="spike__badge" size="small" effect="dark" type="danger">{{ row.status }}</el-tag>
+                        <div class="spike__card-head">
+                            <h3 class="spike__card-title">{{ row.title }}</h3>
+                            <el-tag size="small" effect="plain" :type="row.status === 'ONLINE' ? 'success' : 'info'">
+                                {{ row.status }}
+                            </el-tag>
                         </div>
                         <div class="spike__card-body">
-                            <h3 class="spike__card-title">{{ row.title }}</h3>
                             <div class="spike__price">
-                                <span class="spike__price-symbol">¥</span>
-                                <span class="spike__price-value">{{ money(row.unitPrice) }}</span>
-                                <span class="spike__price-tip">限量 {{ row.totalStock }} 件</span>
+                                <span class="spike__price-label">秒杀价</span>
+                                <span class="spike__price-value">¥ {{ money(row.unitPrice) }}</span>
+                                <span class="spike__price-tip lab-num">限量 {{ row.totalStock }} 件</span>
                             </div>
                             <div class="spike__stock">
                                 <el-progress
                                     :percentage="soldPercent(row)"
-                                    :stroke-width="10"
+                                    :stroke-width="6"
                                     :show-text="false"
-                                    :color="soldOut(row) ? '#8a8a8a' : '#ff2d55'"
+                                    :color="soldOut(row) ? '#8a9099' : '#2f6feb'"
                                 />
                                 <div class="spike__stock-text">
                                     <span v-if="soldOut(row)">已抢完</span>
-                                    <span v-else>剩余 {{ row.availableStock }} / {{ row.totalStock }}</span>
+                                    <span v-else class="lab-num">剩余 {{ row.availableStock }} / {{ row.totalStock }}</span>
                                     <span class="spike__countdown">{{ countdown(row.endTime) }}</span>
                                 </div>
                             </div>
                             <div class="spike__actions">
                                 <el-button
                                     class="spike__buy"
-                                    type="danger"
+                                    type="primary"
+                                    size="small"
+                                    :loading="buying"
                                     :disabled="!clickable(row)"
                                     @click="buy(row)"
                                 >
@@ -372,9 +395,9 @@ onUnmounted(() => {
                         </div>
                     </article>
                 </div>
-                <div v-else class="spike__empty">
-                    <div class="spike__empty-title">会场还没有活动</div>
-                    <div class="spike__empty-desc">点右上角「创建并开启示例活动」，会同时创建活动并把库存预热进 Redis。</div>
+                <div v-else class="lab-empty">
+                    <div class="lab-empty__title">还没有活动</div>
+                    点右上角「创建并开启示例活动」，会同时创建活动并把库存预热进 Redis。
                 </div>
             </template>
         </el-skeleton>
@@ -424,18 +447,22 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <el-dialog v-model="receipt.visible" width="420px" align-center>
-            <div class="spike__result" :class="{ 'spike__result--ok': receipt.ok }">
-                <div class="spike__result-icon">{{ receipt.ok ? '🎉' : '😵' }}</div>
-                <div class="spike__result-title">{{ receipt.title }}</div>
-                <div class="spike__result-msg">{{ receipt.message }}</div>
-                <div v-if="receipt.orderNo" class="spike__result-order">{{ receipt.orderNo }}</div>
+        <el-dialog v-model="receipt.visible" width="440px" align-center :title="receipt.title">
+            <div class="spike__result">
+                <el-tag :type="receipt.ok ? 'success' : 'danger'" size="small" effect="plain">
+                    {{ receipt.ok ? '成功' : '失败' }}
+                </el-tag>
+                <p class="spike__result-msg">{{ receipt.message }}</p>
+                <div v-if="receipt.orderNo" class="spike__result-order">
+                    <span class="lab-mono">{{ receipt.orderNo }}</span>
+                    <el-button size="small" text @click="copyOrderNo(receipt.orderNo)">复制</el-button>
+                </div>
             </div>
             <template #footer>
-                <el-button v-if="receipt.ok" type="danger" @click="receipt.visible = false; queryOrder(receipt.orderNo)">
-                    看看订单
+                <el-button v-if="receipt.ok" type="primary" @click="receipt.visible = false; queryOrder(receipt.orderNo)">
+                    查看订单
                 </el-button>
-                <el-button @click="receipt.visible = false">知道了</el-button>
+                <el-button @click="receipt.visible = false">关闭</el-button>
             </template>
         </el-dialog>
 
@@ -447,14 +474,9 @@ onUnmounted(() => {
                     <div class="no"><span>{{ burst.failed }}</span>未抢到</div>
                     <div><span>{{ burst.elapsedMs }} ms</span>总耗时</div>
                 </div>
-                <el-alert
-                    type="warning"
-                    :closable="false"
-                    show-icon
-                    title="成功数不应该超过剩余库存"
-                    description="多出来就是超卖。每一道防线拦下的请求会按返回码分组列在下面。"
-                    style="margin-bottom: 12px"
-                />
+                <p class="lab-hint" style="margin-bottom: 12px">
+                    成功数不应超过剩余库存，多出来就是超卖。各道防线拦下的请求按返回码分组列在下面。
+                </p>
                 <el-table :data="burst.rows" border size="small" max-height="260">
                     <el-table-column prop="key" label="返回" min-width="260" show-overflow-tooltip />
                     <el-table-column prop="value" label="次数" width="90" />
@@ -465,17 +487,12 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.spike {
-    background: #14161c;
-    border-radius: var(--lab-radius);
-    overflow: hidden;
-    padding-bottom: 20px;
-}
-
 .spike__banner {
-    background: linear-gradient(120deg, #1b0b12 0%, #3a0d1c 45%, #7a0f28 100%);
-    padding: 22px 24px;
-    color: #fff;
+    background: var(--lab-card);
+    border: 1px solid var(--lab-border);
+    border-radius: var(--lab-radius);
+    padding: 12px 16px;
+    margin-bottom: 12px;
 }
 
 .spike__banner-inner {
@@ -483,21 +500,19 @@ onUnmounted(() => {
     align-items: center;
     justify-content: space-between;
     gap: 16px;
+    flex-wrap: wrap;
 }
 
 .spike__title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 26px;
-    font-weight: 700;
-    letter-spacing: 2px;
+    font-size: 14px;
+    font-weight: 600;
 }
 
 .spike__subtitle {
-    margin-top: 6px;
-    font-size: 13px;
-    color: rgba(255, 255, 255, 0.62);
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--lab-muted);
+    line-height: 1.6;
 }
 
 .spike__timer {
@@ -506,98 +521,86 @@ onUnmounted(() => {
 
 .spike__timer-label {
     display: block;
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
+    font-size: 11px;
+    color: var(--lab-muted);
 }
 
 .spike__timer-value {
-    font-size: 28px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
-    color: #ffd45e;
+    color: var(--lab-text);
 }
 
 .spike__toolbar {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 20px;
-    background: #1b1e26;
-}
-
-.spike__toolbar :deep(.lab-hint) {
-    color: #8b93a5;
+    padding: 0 0 12px;
+    flex-wrap: wrap;
 }
 
 .spike__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 14px;
-    padding: 18px 20px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
 }
 
 .spike__card {
-    background: #1e2129;
-    border: 1px solid #2c3040;
-    border-radius: 12px;
+    background: var(--lab-card);
+    border: 1px solid var(--lab-border);
+    border-radius: var(--lab-radius);
     overflow: hidden;
-    transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 
-.spike__card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
-}
-
-.spike__card-img {
-    position: relative;
-    height: 150px;
+.spike__card-head {
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: 52px;
-    background: linear-gradient(135deg, #3a1020, #5c1226);
-}
-
-.spike__badge {
-    position: absolute;
-    top: 10px;
-    left: 10px;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--lab-border);
+    background: #fafbfc;
 }
 
 .spike__card-body {
-    padding: 12px 14px 16px;
+    padding: 12px 14px 14px;
 }
 
 .spike__card-title {
-    margin: 0 0 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #e8ebf2;
-    line-height: 1.45;
-    min-height: 40px;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.5;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .spike__price {
     display: flex;
     align-items: baseline;
-    gap: 6px;
-    color: #ff2d55;
+    gap: 8px;
 }
 
-.spike__price-symbol {
-    font-size: 13px;
+.spike__price-label {
+    font-size: 12px;
+    color: var(--lab-muted);
 }
 
 .spike__price-value {
-    font-size: 24px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--lab-text);
 }
 
 .spike__price-tip {
     margin-left: auto;
     font-size: 12px;
-    color: #8b93a5;
+    color: var(--lab-muted);
 }
 
 .spike__stock {
@@ -609,11 +612,11 @@ onUnmounted(() => {
     justify-content: space-between;
     margin-top: 6px;
     font-size: 12px;
-    color: #9aa3b5;
+    color: var(--lab-text-2);
 }
 
 .spike__countdown {
-    color: #ffd45e;
+    color: var(--lab-muted);
     font-variant-numeric: tabular-nums;
 }
 
@@ -625,97 +628,58 @@ onUnmounted(() => {
 }
 
 .spike__buy {
-    flex: 1;
-    min-width: 110px;
-    font-weight: 600;
-}
-
-.spike__empty {
-    padding: 60px 20px;
-    text-align: center;
-    color: #9aa3b5;
-}
-
-.spike__empty-title {
-    font-size: 16px;
-    color: #e8ebf2;
-    margin-bottom: 8px;
-}
-
-.spike__empty-desc {
-    font-size: 13px;
+    min-width: 96px;
 }
 
 .spike__panel {
-    margin: 0 20px 16px;
     padding: 14px 16px;
-    background: #1e2129;
-    border: 1px solid #2c3040;
-    border-radius: 12px;
+    background: var(--lab-card);
+    border: 1px solid var(--lab-border);
+    border-radius: var(--lab-radius);
+    margin-bottom: 12px;
 }
 
 .spike__panel-title {
     font-size: 13px;
     font-weight: 600;
-    color: #e8ebf2;
     margin-bottom: 10px;
 }
 
-.spike__panel :deep(.el-descriptions__label) {
-    color: #8b93a5 !important;
-}
-
-.spike__panel :deep(.el-descriptions__content) {
-    color: #e8ebf2 !important;
-}
-
 .spike__result {
-    text-align: center;
-    padding: 10px 0;
-}
-
-.spike__result-icon {
-    font-size: 52px;
-}
-
-.spike__result-title {
-    margin-top: 8px;
-    font-size: 20px;
-    font-weight: 700;
-    color: #8b93a5;
-}
-
-.spike__result--ok .spike__result-title {
-    color: #ff2d55;
+    padding: 4px 0;
 }
 
 .spike__result-msg {
-    margin-top: 6px;
+    margin: 10px 0;
     font-size: 13px;
-    color: #6b7385;
+    color: var(--lab-text-2);
+    line-height: 1.6;
 }
 
 .spike__result-order {
-    margin-top: 10px;
-    font-family: Menlo, Consolas, monospace;
-    font-size: 13px;
-    color: #b8c0d0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #fafbfc;
+    border: 1px solid var(--lab-border);
+    border-radius: var(--lab-radius);
 }
 
 .spike__burst-nums {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    margin-bottom: 14px;
-    text-align: center;
+    gap: 8px;
+    margin-bottom: 12px;
     font-size: 12px;
     color: var(--lab-muted);
 }
 
 .spike__burst-nums span {
     display: block;
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
     color: var(--lab-text);
 }
 

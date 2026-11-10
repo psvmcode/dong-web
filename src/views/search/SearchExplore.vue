@@ -188,14 +188,14 @@ onMounted(() => {
                 :trigger-on-focus="false"
                 placeholder="搜商品，试试「华为」「羽绒服」「大米」"
                 class="shop__input"
-                size="large"
+                size="small"
                 clearable
                 @select="onSuggestSelect"
                 @keyup.enter="doSearch"
             >
                 <template #prefix><el-icon><Search /></el-icon></template>
             </el-autocomplete>
-            <el-button type="danger" size="large" :loading="loading" @click="doSearch">搜索</el-button>
+            <el-button type="danger" size="small" :loading="loading" @click="doSearch">搜索</el-button>
         </div>
 
         <el-tabs v-model="mode" class="shop__tabs">
@@ -274,25 +274,19 @@ onMounted(() => {
                             深分页用游标翻页，不受 from + size 的一万条上限限制。当前游标：{{ deepCursor || '空' }}
                         </div>
 
-                        <el-skeleton :loading="loading" animated :count="3" style="margin-top: 8px">
+                        <el-skeleton :loading="loading" :count="3" style="margin-top: 8px">
                             <template #template>
                                 <div class="shop__grid">
-                                    <div v-for="i in 6" :key="i" class="shop__card">
-                                        <el-skeleton-item variant="image" style="height: 160px" />
-                                        <el-skeleton-item variant="text" style="margin-top: 10px" />
-                                        <el-skeleton-item variant="text" style="width: 60%" />
+                                    <div v-for="i in 6" :key="i" class="shop__card" style="padding: 12px">
+                                        <el-skeleton-item variant="text" style="width: 80%" />
+                                        <el-skeleton-item variant="text" style="margin-top: 12px; width: 55%" />
+                                        <el-skeleton-item variant="text" style="margin-top: 8px; width: 40%" />
                                     </div>
                                 </div>
                             </template>
                             <template #default>
                                 <div v-if="rows.length > 0" class="shop__grid">
                                     <article v-for="hit in rows" :key="hit.id" class="shop__card">
-                                        <div
-                                            class="shop__card-img"
-                                            :style="{ background: categoryMeta(hit.category).gradient }"
-                                        >
-                                            <span>{{ categoryMeta(hit.category).icon }}</span>
-                                        </div>
                                         <div class="shop__card-body">
                                             <h3 class="shop__card-title" v-html="highlightHtml(hit.highlight, hit.name)"></h3>
                                             <p class="shop__card-desc" v-html="highlightHtml(hit.descriptionHighlight, '')"></p>
@@ -308,7 +302,6 @@ onMounted(() => {
                                     </article>
                                 </div>
                                 <div v-else class="shop__empty">
-                                    <div class="shop__empty-icon">🔍</div>
                                     <div class="shop__empty-title">没有找到商品</div>
                                     <div class="shop__empty-desc">
                                         索引里可能还没有数据。ES 只是可丢弃的检索视图，从 MySQL 重建一次就行。
@@ -353,9 +346,6 @@ onMounted(() => {
                     </el-form>
                     <div class="shop__grid">
                         <article v-for="hit in nearbyRows" :key="hit.id" class="shop__card">
-                            <div class="shop__card-img" :style="{ background: categoryMeta(hit.category).gradient }">
-                                <span>{{ categoryMeta(hit.category).icon }}</span>
-                            </div>
                             <div class="shop__card-body">
                                 <h3 class="shop__card-title">{{ hit.name }}</h3>
                                 <div class="shop__card-tags">
@@ -380,9 +370,8 @@ onMounted(() => {
 
 <style scoped>
 .shop {
-    background: #fff;
+    background: var(--lab-card);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     overflow: hidden;
 }
 
@@ -402,9 +391,8 @@ onMounted(() => {
 
 .shop__logo-mark {
     font-size: 20px;
-    font-weight: 700;
-    color: #e1251b;
-    letter-spacing: -0.5px;
+    font-weight: 600;
+    color: var(--lab-danger);
 }
 
 .shop__logo-text {
@@ -436,7 +424,7 @@ onMounted(() => {
 
 .shop__panel {
     border: 1px solid var(--lab-border);
-    border-radius: 10px;
+    border-radius: var(--lab-radius);
     padding: 12px;
 }
 
@@ -500,14 +488,14 @@ onMounted(() => {
 .shop__bar-track {
     flex: 1;
     height: 8px;
-    background: #f0f2f6;
+    background: var(--lab-border);
     border-radius: 4px;
     overflow: hidden;
 }
 
 .shop__bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, #ffb199, #ff0844);
+    background: #fafbfc;
     border-radius: 4px;
 }
 
@@ -522,9 +510,9 @@ onMounted(() => {
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    background: #fafbfd;
+    background: #fafbfc;
     border: 1px solid var(--lab-border);
-    border-radius: 10px;
+    border-radius: var(--lab-radius);
     margin-bottom: 12px;
     flex-wrap: wrap;
 }
@@ -539,16 +527,16 @@ onMounted(() => {
     border-radius: 6px;
     font-size: 13px;
     cursor: pointer;
-    color: #4e5969;
+    color: var(--lab-text-2);
 }
 
 .shop__sorts span:hover {
-    background: #eef1f6;
+    background: var(--lab-border);
 }
 
 .shop__sorts .is-on {
-    background: #e1251b;
-    color: #fff;
+    background: var(--lab-danger);
+    color: var(--lab-text);
 }
 
 .shop__meta {
@@ -560,10 +548,10 @@ onMounted(() => {
     padding: 8px 12px;
     margin-bottom: 12px;
     font-size: 12px;
-    color: #b26a00;
-    background: #fff7e8;
-    border: 1px solid #ffe0a3;
-    border-radius: 8px;
+    color: var(--lab-warn);
+    background: #fafbfc;
+    border: 1px solid var(--lab-border);
+    border-radius: var(--lab-radius);
 }
 
 .shop__grid {
@@ -574,23 +562,15 @@ onMounted(() => {
 
 .shop__card {
     border: 1px solid var(--lab-border);
-    border-radius: 10px;
+    border-radius: var(--lab-radius);
     overflow: hidden;
-    background: #fff;
-    transition: box-shadow 0.16s ease, transform 0.16s ease;
-}
-
-.shop__card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--lab-shadow-hover);
-}
-
-.shop__card-img {
+    background: var(--lab-card);
+}.shop__card-img {
     height: 160px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 46px;
+    font-size: 16px;
 }
 
 .shop__card-body {
@@ -609,7 +589,7 @@ onMounted(() => {
 }
 
 .shop__card-title :deep(em) {
-    color: #e1251b;
+    color: var(--lab-danger);
     font-style: normal;
     font-weight: 600;
 }
@@ -626,7 +606,7 @@ onMounted(() => {
 }
 
 .shop__card-desc :deep(em) {
-    color: #e1251b;
+    color: var(--lab-danger);
     font-style: normal;
 }
 
@@ -640,7 +620,7 @@ onMounted(() => {
 .shop__card-price {
     display: flex;
     align-items: baseline;
-    color: #e1251b;
+    color: var(--lab-danger);
 }
 
 .shop__price-symbol {
@@ -658,7 +638,7 @@ onMounted(() => {
 }
 
 .shop__empty-icon {
-    font-size: 40px;
+    font-size: 16px;
 }
 
 .shop__empty-title {

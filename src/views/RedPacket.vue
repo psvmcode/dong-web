@@ -5,7 +5,7 @@ import { Money, RefreshRight } from '@element-plus/icons-vue';
 import { runBurst, useApi } from '@/composables/useApi';
 import * as api from '@/api/redpacket';
 import type { GrabResultResponse, RedPacketRecord, RedPacketResponse } from '@/api/types';
-import { avatarColor, initialOf } from '@/utils/scene';
+import { initialOf } from '@/utils/scene';
 
 /**
  * 微信群红包。
@@ -102,7 +102,7 @@ async function send() {
     sendDialog.value = false;
     push({
         kind: 'packet',
-        text: sendForm.lucky ? '恭喜发财，大吉大利' : `发了 ${sendForm.totalCount} 个固定红包`,
+        text: sendForm.lucky ? '点下方按钮拆开' : `发了 ${sendForm.totalCount} 个固定红包`,
         mine: true,
         userId: me.value,
         packetNo,
@@ -267,15 +267,6 @@ const runtimeEntries = computed(() => {
 });
 
 /**
- * 头像底色。
- *
- * @param userId 用户 id
- */
-function color(userId: number | undefined): string {
-    return avatarColor(userId ?? 0);
-}
-
-/**
  * 头像首字。
  *
  * @param text 名字
@@ -289,9 +280,8 @@ function initial(text: string): string {
     <div class="rp">
         <div class="rp__phone">
             <div class="rp__phone-bar">
-                <span>‹</span>
-                <span class="rp__phone-title">实验室红包群 ({{ 1 + others.length }})</span>
-                <span>···</span>
+                <span class="rp__phone-title">红包记录 · {{ 1 + others.length }} 人</span>
+                <span class="lab-hint">点卡片拆红包</span>
             </div>
 
             <div class="rp__chat">
@@ -303,22 +293,20 @@ function initial(text: string): string {
                     </div>
 
                     <div v-else class="rp__row" :class="{ 'rp__row--mine': message.mine }">
-                        <div class="rp__avatar" :style="{ background: color(message.userId) }">
+                        <div class="rp__avatar">
                             {{ message.mine ? '我' : initial(message.text) }}
                         </div>
                         <div class="rp__bubble-wrap">
                             <div class="rp__nick">{{ message.mine ? '我' : message.text }}</div>
                             <div class="rp__packet" @click="openFrom(message)">
-                                <div class="rp__packet-icon">🧧</div>
                                 <div class="rp__packet-text">
                                     <div class="rp__packet-title">{{ message.text }}</div>
-                                    <div class="rp__packet-sub">
+                                    <div class="rp__packet-sub lab-num">
                                         <template v-if="message.opened">已领取 {{ message.amount }} 分</template>
                                         <template v-else-if="(message.remainCount ?? 0) <= 0">已被抢完</template>
                                         <template v-else>剩余 {{ message.remainCount }} / {{ message.totalCount }} 份</template>
                                     </div>
                                 </div>
-                                <div class="rp__packet-tag">微信红包</div>
                             </div>
                             <div class="rp__packet-ops">
                                 <el-button link size="small" @click="showDetail(message.packetNo as string)">领取记录</el-button>
@@ -329,8 +317,8 @@ function initial(text: string): string {
             </div>
 
             <div class="rp__composer">
-                <el-input :model-value="''" placeholder="说点什么…" size="small" disabled />
-                <el-button type="danger" size="small" :icon="Money" @click="sendDialog = true">发红包</el-button>
+                <el-button type="primary" size="small" :icon="Money" @click="sendDialog = true">发红包</el-button>
+                <span class="lab-hint">发起后点卡片拆开，或到右侧做并发抢</span>
             </div>
         </div>
 
@@ -385,15 +373,15 @@ function initial(text: string): string {
 
         <el-dialog v-model="openPacket.visible" width="360px" :show-close="true" align-center>
             <div class="rp__open">
-                <div class="rp__open-avatar" :style="{ background: color(me) }">我</div>
+                <div class="rp__open-avatar">我</div>
                 <div class="rp__open-from">{{ openPacket.from }} 的红包</div>
                 <div v-if="!openPacket.opened" class="rp__open-tip">
-                    {{ remainLeft === 0 ? '来晚了，红包已被抢完' : '恭喜发财，大吉大利' }}
+                    {{ remainLeft === 0 ? '来晚了，红包已被抢完' : '点下方按钮拆开' }}
                 </div>
 
                 <div v-if="openPacket.opened" class="rp__open-result">
                     <div class="rp__open-amount">{{ openPacket.amount }}<span>分</span></div>
-                    <el-button link size="small" @click="showDetail(openPacket.packetNo)">查看领取记录 ›</el-button>
+                    <el-button link size="small" @click="showDetail(openPacket.packetNo)">查看领取记录</el-button>
                 </div>
                 <div v-else class="rp__open-seal" @click="grabIt">開</div>
 
@@ -415,11 +403,8 @@ function initial(text: string): string {
                 <el-table-column label="领取人" min-width="150">
                     <template #default="{ row }">
                         <div class="lab-row" style="gap: 6px">
-                            <div class="rp__tiny-avatar" :style="{ background: color(row.userId) }">
-                                {{ row.userId === me ? '我' : String(row.userId % 100) }}
-                            </div>
                             实验员{{ row.userId % 100 }}
-                            <el-tag v-if="row.amount === bestRecord" size="small" type="warning" effect="dark">最佳手气</el-tag>
+                            <el-tag v-if="row.amount === bestRecord" size="small" type="warning" effect="plain">最佳手气</el-tag>
                         </div>
                     </template>
                 </el-table-column>
@@ -446,7 +431,7 @@ function initial(text: string): string {
                     description="多一个人拿到就说明同一份被发了两次。剩余的失败里常见的是「已被抢完」和锁竞争的 1002。"
                 />
                 <div class="rp__amounts">
-                    <el-tag v-for="(amount, index) in burstDialog.amounts" :key="index" size="small" effect="light" type="danger">
+                    <el-tag v-for="(amount, index) in burstDialog.amounts" :key="index" size="small" effect="plain" type="danger">
                         {{ amount }} 分
                     </el-tag>
                     <span v-if="burstDialog.amounts.length === 0" class="lab-hint">没有人抢到</span>
@@ -465,11 +450,10 @@ function initial(text: string): string {
 }
 
 .rp__phone {
-    background: #ededed;
-    border-radius: 14px;
-    border: 1px solid #dcdcdc;
+    background: var(--lab-card);
+    border-radius: var(--lab-radius);
+    border: 1px solid var(--lab-border);
     overflow: hidden;
-    box-shadow: var(--lab-shadow);
 }
 
 .rp__phone-bar {
@@ -477,10 +461,10 @@ function initial(text: string): string {
     align-items: center;
     justify-content: space-between;
     padding: 10px 14px;
-    background: #ededed;
-    border-bottom: 1px solid #dcdcdc;
-    font-size: 14px;
-    color: #1a1a1a;
+    background: #fafbfc;
+    border-bottom: 1px solid var(--lab-border);
+    font-size: 13px;
+    color: var(--lab-text);
 }
 
 .rp__phone-title {
@@ -491,22 +475,23 @@ function initial(text: string): string {
     height: 460px;
     overflow-y: auto;
     padding: 12px;
-    background: #f5f5f5;
+    background: var(--lab-card);
 }
 
 .rp__system {
     text-align: center;
     font-size: 12px;
-    color: #9b9b9b;
+    color: var(--lab-muted);
     margin: 6px 0 12px;
 }
 
 .rp__grabbed {
     text-align: center;
     font-size: 12px;
-    color: #b26a00;
-    background: #fff7e8;
-    border-radius: 6px;
+    color: var(--lab-warn);
+    background: #fafbfc;
+    border: 1px solid var(--lab-border);
+    border-radius: var(--lab-radius);
     padding: 4px 8px;
     margin: 0 auto 10px;
     width: fit-content;
@@ -525,11 +510,13 @@ function initial(text: string): string {
 .rp__avatar {
     width: 38px;
     height: 38px;
-    border-radius: 6px;
+    border-radius: var(--lab-radius);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    background: #fafbfc;
+    border: 1px solid var(--lab-border);
+    color: var(--lab-text-2);
     font-size: 13px;
     flex: 0 0 38px;
 }
@@ -544,7 +531,7 @@ function initial(text: string): string {
 
 .rp__nick {
     font-size: 12px;
-    color: #9b9b9b;
+    color: var(--lab-muted);
     margin-bottom: 4px;
 }
 
@@ -553,20 +540,16 @@ function initial(text: string): string {
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
-    background: #f8a33d;
-    border-radius: 8px;
-    color: #fff;
+    background: #fafbfc;
+    border: 1px solid var(--lab-border);
+    border-radius: var(--lab-radius);
+    color: var(--lab-text);
     cursor: pointer;
     text-align: left;
-    transition: transform 0.12s ease;
 }
 
 .rp__packet:hover {
-    transform: scale(1.02);
-}
-
-.rp__packet-icon {
-    font-size: 26px;
+    border-color: var(--lab-primary);
 }
 
 .rp__packet-title {
@@ -576,14 +559,8 @@ function initial(text: string): string {
 
 .rp__packet-sub {
     font-size: 11px;
-    opacity: 0.86;
+    color: var(--lab-text-2);
     margin-top: 2px;
-}
-
-.rp__packet-tag {
-    font-size: 10px;
-    opacity: 0.7;
-    align-self: flex-end;
 }
 
 .rp__packet-ops {
@@ -595,16 +572,15 @@ function initial(text: string): string {
     align-items: center;
     gap: 8px;
     padding: 10px 12px;
-    background: #f7f7f7;
-    border-top: 1px solid #dcdcdc;
+    background: #fafbfc;
+    border-top: 1px solid var(--lab-border);
 }
 
 .rp__tools {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
     padding: 16px 18px;
-    box-shadow: var(--lab-shadow);
 }
 
 .rp__tools-title {
@@ -631,12 +607,12 @@ function initial(text: string): string {
 .rp__open-avatar {
     width: 52px;
     height: 52px;
-    border-radius: 8px;
+    border-radius: var(--lab-radius);
     margin: 0 auto 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--lab-text);
     font-size: 16px;
 }
 
@@ -656,16 +632,14 @@ function initial(text: string): string {
     height: 84px;
     margin: 22px auto 10px;
     border-radius: 50%;
-    background: linear-gradient(160deg, #ffd76e, #f0a12e);
-    color: #8a3b0e;
-    font-size: 34px;
-    font-weight: 700;
+    background: #fafbfc;
+    color: var(--lab-text-2);
+    font-size: 16px;
+    font-weight: 600;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 6px 18px rgba(214, 141, 26, 0.45);
-    transition: transform 0.12s ease;
 }
 
 .rp__open-seal:hover {
@@ -677,9 +651,9 @@ function initial(text: string): string {
 }
 
 .rp__open-amount {
-    font-size: 44px;
-    font-weight: 700;
-    color: #e1251b;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--lab-danger);
 }
 
 .rp__open-amount span {
@@ -706,7 +680,7 @@ function initial(text: string): string {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--lab-text);
     font-size: 11px;
 }
 
@@ -722,8 +696,8 @@ function initial(text: string): string {
 
 .rp__burst-nums span {
     display: block;
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
     color: var(--lab-text);
 }
 

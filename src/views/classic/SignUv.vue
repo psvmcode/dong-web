@@ -168,7 +168,7 @@ onMounted(loadSign);
                 <el-button
                     class="sign__btn"
                     type="warning"
-                    size="large"
+                    size="small"
                     round
                     :disabled="signedToday"
                     @click="signToday"
@@ -211,7 +211,7 @@ onMounted(loadSign);
                 >
                     <template v-if="day > 0">
                         <span class="sign__day">{{ day }}</span>
-                        <span v-if="calendar[String(day)]" class="sign__check">✓</span>
+                        <span v-if="calendar[String(day)]" class="sign__check">已签</span>
                     </template>
                 </div>
             </div>
@@ -269,7 +269,7 @@ onMounted(loadSign);
 
 <style scoped>
 .sign {
-    background: #f6f8fc;
+    background: #fafbfc;
     padding: 18px;
     border-radius: var(--lab-radius);
 }
@@ -279,11 +279,10 @@ onMounted(loadSign);
     align-items: center;
     justify-content: space-between;
     gap: 20px;
-    background: linear-gradient(135deg, #ff9d4d, #ff6b35);
-    border-radius: 14px;
+    background: #fafbfc;
+    border-radius: var(--lab-radius);
     padding: 24px 26px;
-    color: #fff;
-    box-shadow: 0 8px 24px rgba(255, 107, 53, 0.24);
+    color: var(--lab-text);
     flex-wrap: wrap;
 }
 
@@ -303,12 +302,12 @@ onMounted(loadSign);
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.24);
+    background: #fafbfc;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 20px;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .sign__user-name {
@@ -318,7 +317,7 @@ onMounted(loadSign);
 
 .sign__user-meta {
     font-size: 12px;
-    opacity: 0.85;
+
     margin-top: 2px;
 }
 
@@ -328,13 +327,13 @@ onMounted(loadSign);
 }
 
 .sign__stat-value {
-    font-size: 24px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
 }
 
 .sign__stat-label {
     font-size: 12px;
-    opacity: 0.85;
+
 }
 
 .sign__hero-right {
@@ -343,7 +342,7 @@ onMounted(loadSign);
 
 .sign__today {
     font-size: 13px;
-    opacity: 0.9;
+
     margin-bottom: 8px;
 }
 
@@ -351,21 +350,20 @@ onMounted(loadSign);
     min-width: 130px;
     font-size: 16px;
     font-weight: 600;
-    background: #fff !important;
-    color: #ff6b35 !important;
+    background: var(--lab-card) !important;
+    color: var(--lab-primary) !important;
     border: none !important;
 }
 
 .sign__btn:disabled {
-    background: rgba(255, 255, 255, 0.6) !important;
-    color: #b58a72 !important;
+    background: #fafbfc !important;
+    color: var(--lab-muted) !important;
 }
 
 .sign__panel {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 14px 16px;
     margin-top: 14px;
 }
@@ -407,14 +405,13 @@ onMounted(loadSign);
 
 .sign__cell {
     aspect-ratio: 1;
-    border-radius: 10px;
-    background: #f6f8fc;
+    border-radius: var(--lab-radius);
+    background: #fafbfc;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: background 0.14s ease, transform 0.14s ease;
     position: relative;
 }
 
@@ -428,12 +425,12 @@ onMounted(loadSign);
 }
 
 .sign__cell--on {
-    background: linear-gradient(160deg, #ffd08a, #ff8b3d);
-    color: #fff;
+    background: #fafbfc;
+    color: var(--lab-text);
 }
 
 .sign__cell--today {
-    border: 2px solid #ff6b35;
+    border: 2px solid var(--lab-primary);
 }
 
 .sign__day {
@@ -444,6 +441,7 @@ onMounted(loadSign);
 .sign__check {
     font-size: 11px;
     margin-top: 2px;
+    color: var(--lab-success);
 }
 
 .sign__uv-result {
@@ -459,13 +457,13 @@ onMounted(loadSign);
 }
 
 .sign__uv-value {
-    font-size: 30px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
     color: var(--lab-text);
 }
 
 .sign__uv-value--est {
-    color: #3d6ff5;
+    color: var(--lab-primary);
 }
 
 .sign__uv-value--warn {
@@ -479,7 +477,7 @@ onMounted(loadSign);
 }
 
 .sign__uv-arrow {
-    font-size: 22px;
+    font-size: 16px;
     color: var(--lab-muted);
 }
 </style>

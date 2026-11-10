@@ -204,7 +204,10 @@ onMounted(refresh);
                         </template>
                     </el-table-column>
                 </el-table>
-                <div v-if="flagged.length === 0" class="lab-hint">暂无嫌疑账户</div>
+                <div v-if="flagged.length === 0" class="lab-empty">
+                    <div class="lab-empty__title">暂无嫌疑账户</div>
+                    用同一个账户连续发起几笔贴近申报线的汇款，再回来查画像。
+                </div>
             </div>
 
             <div class="lab-card">
@@ -215,7 +218,10 @@ onMounted(refresh);
                         {{ value }}
                     </el-descriptions-item>
                 </el-descriptions>
-                <div v-else class="lab-hint">暂无敞口数据</div>
+                <div v-else class="lab-empty">
+                    <div class="lab-empty__title">暂无敞口数据</div>
+                    先锁汇并汇出一笔，已锁汇未清算的部分才会产生敞口。
+                </div>
                 <ResultView :result="opResult" title="操作返回" :max-height="140" style="margin-top: 10px" />
             </div>
         </div>

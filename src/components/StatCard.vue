@@ -18,7 +18,7 @@ const toneClass = computed(() => `stat-card--${props.tone ?? 'plain'}`);
 </script>
 
 <template>
-    <el-skeleton :loading="!!loading" animated>
+    <el-skeleton :loading="!!loading">
         <template #template>
             <div class="stat-card stat-card--plain">
                 <el-skeleton-item variant="text" style="width: 60%" />
@@ -38,12 +38,11 @@ const toneClass = computed(() => `stat-card--${props.tone ?? 'plain'}`);
 
 <style scoped>
 .stat-card {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
-    padding: 14px 16px;
-    min-height: 92px;
+    padding: 12px 14px;
+    min-height: 76px;
 }
 
 .stat-card__label {
@@ -52,17 +51,18 @@ const toneClass = computed(() => `stat-card--${props.tone ?? 'plain'}`);
 }
 
 .stat-card__value {
-    margin-top: 8px;
-    font-size: 24px;
+    margin-top: 6px;
+    font-size: 20px;
     font-weight: 600;
-    letter-spacing: 0.4px;
+    font-variant-numeric: tabular-nums;
     color: var(--lab-text);
+    word-break: break-all;
 }
 
 .stat-card__hint {
-    margin-top: 6px;
+    margin-top: 4px;
     font-size: 12px;
-    color: #93a0b5;
+    color: var(--lab-muted);
 }
 
 .stat-card--good .stat-card__value {

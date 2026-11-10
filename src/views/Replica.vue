@@ -141,18 +141,23 @@ onMounted(loadAccounts);
         <div class="lab-card">
             <div class="lab-card__title">账户列表</div>
             <el-table :data="accounts" border stripe size="small" max-height="320">
-                <el-table-column prop="id" label="id" width="80" />
-                <el-table-column label="userId" width="100">
+                <el-table-column prop="id" label="id" width="80" align="right" />
+                <el-table-column label="userId" min-width="160">
                     <template #default="{ row }">
                         <el-link type="primary" @click="queryUserId = row.userId; loadDetail()">{{ row.userId }}</el-link>
+                        <CopyButton :value="row.userId" />
                     </template>
                 </el-table-column>
                 <el-table-column prop="username" label="用户名" min-width="140" />
-                <el-table-column label="余额" min-width="130">
-                    <template #default="{ row }">{{ thousand(row.balance) }}</template>
+                <el-table-column label="余额" min-width="130" align="right">
+                    <template #default="{ row }"><span class="lab-num">{{ thousand(row.balance) }}</span></template>
                 </el-table-column>
                 <el-table-column prop="updateTime" label="更新时间" min-width="170" />
             </el-table>
+            <div v-if="accounts.length === 0" class="lab-empty" style="margin-top: 10px">
+                <div class="lab-empty__title">第二数据源还没有账户</div>
+                用左侧「创建账户」建出 userId 1 和 2，就能开始转账与复制延迟的对照实验。
+            </div>
         </div>
 
         <div class="lab-grid lab-grid--2">

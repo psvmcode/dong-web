@@ -193,14 +193,12 @@ onMounted(async () => {
         <div class="od__body">
             <div class="od__main">
                 <div v-if="detail" class="od__state">
-                    <div class="od__state-icon">
-                        {{ isFinalState ? (detail.status === 'FINISHED' ? '✓' : '×') : '●' }}
-                    </div>
+                    <span class="lab-dot" :class="isFinalState ? (detail.status === 'FINISHED' ? 'lab-dot--good' : 'lab-dot--bad') : 'lab-dot--accent'"></span>
                     <div>
                         <div class="od__state-title">
                             {{ statusLabel }}
                             <el-tag size="small" effect="plain">版本 v{{ detail.version }}</el-tag>
-                            <el-tag v-if="detail.urgeCount > 0" size="small" type="warning" effect="dark">
+                            <el-tag v-if="detail.urgeCount > 0" size="small" type="warning" effect="plain">
                                 催单 {{ detail.urgeCount }} 次
                             </el-tag>
                         </div>
@@ -222,7 +220,6 @@ onMounted(async () => {
                 />
 
                 <div v-if="detail" class="od__goods">
-                    <div class="od__goods-img">📦</div>
                     <div class="od__goods-info">
                         <div class="od__goods-name">{{ detail.productName }}</div>
                         <div class="od__goods-meta">数量 {{ detail.quantity }} · 用户 {{ detail.userId }}</div>
@@ -368,10 +365,9 @@ onMounted(async () => {
 }
 
 .od__main {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 16px 18px;
 }
 
@@ -380,20 +376,20 @@ onMounted(async () => {
     align-items: center;
     gap: 12px;
     padding-bottom: 14px;
-    border-bottom: 1px solid #f2f4f8;
+    border-bottom: 1px solid var(--lab-border);
 }
 
 .od__state-icon {
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #3d6ff5, #6f8cf7);
-    color: #fff;
+    background: #fafbfc;
+    color: var(--lab-text);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 20px;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .od__state-title {
@@ -407,7 +403,7 @@ onMounted(async () => {
 .od__state-desc {
     font-size: 12px;
     color: var(--lab-muted);
-    font-family: Menlo, Consolas, monospace;
+    font-family: var(--lab-font-mono);
     margin-top: 2px;
 }
 
@@ -419,21 +415,21 @@ onMounted(async () => {
     display: flex;
     gap: 12px;
     align-items: center;
-    background: #fafbfd;
+    background: #fafbfc;
     border: 1px solid var(--lab-border);
-    border-radius: 10px;
+    border-radius: var(--lab-radius);
     padding: 12px 14px;
 }
 
 .od__goods-img {
     width: 56px;
     height: 56px;
-    border-radius: 8px;
-    background: #eef1f6;
+    border-radius: var(--lab-radius);
+    background: var(--lab-border);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 26px;
+    font-size: 16px;
     flex: 0 0 56px;
 }
 
@@ -459,8 +455,8 @@ onMounted(async () => {
 
 .od__amount-value {
     font-size: 20px;
-    font-weight: 700;
-    color: #e1251b;
+    font-weight: 600;
+    color: var(--lab-danger);
 }
 
 .od__amount-refund {
@@ -484,9 +480,9 @@ onMounted(async () => {
 
 .od__fire {
     margin-top: 12px;
-    background: #fafbfd;
+    background: #fafbfc;
     border: 1px dashed var(--lab-border);
-    border-radius: 10px;
+    border-radius: var(--lab-radius);
     padding: 12px;
 }
 
@@ -496,16 +492,15 @@ onMounted(async () => {
 }
 
 .od__rejected {
-    color: #dc4a4a;
+    color: var(--lab-danger);
     font-size: 12px;
     margin-left: 6px;
 }
 
 .od__panel {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 14px 16px;
     margin-bottom: 12px;
 }

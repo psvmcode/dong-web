@@ -210,7 +210,7 @@ onMounted(() => {
                     description="RocketMQ 用内置延迟等级，Kafka 没有原生延迟，本地实现用时间轮询——同一个接口底下的机制完全不同，所以延迟精度也不保证一致。"
                 />
                 <div v-if="sendResult" class="mq__note">
-                    <el-tag :type="sendResult.ok ? 'success' : 'danger'" effect="dark">
+                    <el-tag :type="sendResult.ok ? 'success' : 'danger'" effect="plain">
                         {{ sendResult.ok ? '投递成功' : `code ${sendResult.code}` }}
                     </el-tag>
                 </div>
@@ -258,21 +258,20 @@ onMounted(() => {
 }
 
 .mq__impl {
-    background: linear-gradient(135deg, #2b3350, #4b3a72);
+    background: #fafbfc;
     border-radius: var(--lab-radius);
     padding: 16px 18px;
-    color: #fff;
-    box-shadow: 0 8px 22px rgba(43, 51, 80, 0.18);
+    color: var(--lab-text);
 }
 
 .mq__impl-label {
     font-size: 12px;
-    opacity: 0.7;
+
 }
 
 .mq__impl-value {
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
     margin: 4px 0 10px;
 }
 
@@ -283,25 +282,24 @@ onMounted(() => {
 }
 
 .mq__stat {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
-    border-left: 3px solid #3d6ff5;
+    border-left: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 12px 14px;
 }
 
 .mq__stat--warn {
-    border-left-color: #f2b94b;
+    border-left-color: var(--lab-warn);
 }
 
 .mq__stat--bad {
-    border-left-color: #dc4a4a;
+    border-left-color: var(--lab-danger);
 }
 
 .mq__stat-value {
-    font-size: 24px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
 }
 
 .mq__stat-label {
@@ -319,10 +317,9 @@ onMounted(() => {
 
 .mq__sender,
 .mq__logs {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 14px 16px;
 }
 
@@ -359,7 +356,7 @@ onMounted(() => {
 
 .mq__log-payload {
     margin: 4px 0 6px;
-    color: #4e5969;
+    color: var(--lab-text-2);
     word-break: break-all;
 }
 

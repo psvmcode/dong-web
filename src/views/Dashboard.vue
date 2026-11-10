@@ -214,7 +214,7 @@ onMounted(refresh);
                     </div>
                     <div class="scene-card__desc">{{ leaf.desc }}</div>
                     <div class="scene-card__tags">
-                        <el-tag v-for="tag in leaf.tags" :key="tag" size="small" effect="light" round>{{ tag }}</el-tag>
+                        <el-tag v-for="tag in leaf.tags" :key="tag" size="small" effect="plain" round>{{ tag }}</el-tag>
                     </div>
                 </div>
             </div>

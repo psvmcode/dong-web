@@ -249,7 +249,7 @@ const lockSummary = computed(() => {
                 <el-table v-if="lockRows.length > 0" :data="lockRows" border size="small">
                     <el-table-column label="模式" width="160">
                         <template #default="{ row }">
-                            <el-tag :type="row.mode === 'no-lock' ? 'danger' : 'success'" size="small" effect="dark">
+                            <el-tag :type="row.mode === 'no-lock' ? 'danger' : 'success'" size="small" effect="plain">
                                 {{ row.mode === 'no-lock' ? '不加锁' : 'Redisson 锁' }}
                             </el-tag>
                         </template>
@@ -367,11 +367,10 @@ const lockSummary = computed(() => {
     display: flex;
     align-items: center;
     gap: 10px;
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
-    border-left: 3px solid #3d6ff5;
+    border-left: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 14px 16px;
     margin-bottom: 12px;
     flex-wrap: wrap;
@@ -391,9 +390,9 @@ const lockSummary = computed(() => {
 }
 
 .pl__verdict {
-    background: #fff7e8;
-    border: 1px solid #ffe0a3;
-    border-radius: 10px;
+    background: #fafbfc;
+    border: 1px solid var(--lab-border);
+    border-radius: var(--lab-radius);
     padding: 10px 14px;
     font-size: 13px;
     margin-bottom: 12px;
@@ -401,20 +400,19 @@ const lockSummary = computed(() => {
 }
 
 .pl__bad {
-    color: #dc4a4a;
+    color: var(--lab-danger);
     font-size: 16px;
 }
 
 .pl__warn {
-    color: #d98900;
+    color: var(--lab-warn);
     font-size: 16px;
 }
 
 .pl__panel {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 12px 14px;
     margin-bottom: 12px;
 }

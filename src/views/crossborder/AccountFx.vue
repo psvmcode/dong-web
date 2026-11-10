@@ -187,7 +187,7 @@ onMounted(() => {
                         <div class="bk__card-frozen">{{ money(selected.frozenBalance) }}</div>
                     </div>
                 </div>
-                <el-tag v-if="selected.status !== 0" class="bk__card-badge" type="danger" effect="dark">已冻结</el-tag>
+                <el-tag v-if="selected.status !== 0" class="bk__card-badge" type="danger" effect="plain">已冻结</el-tag>
             </div>
             <div class="bk__summary">
                 <div class="bk__summary-title">账户总览</div>
@@ -351,7 +351,7 @@ onMounted(() => {
                 <div v-if="quote" class="bk__quote">
                     <div class="bk__quote-rate">{{ quote.lockedRate }}</div>
                     <div class="bk__quote-meta">{{ quote.currencyPair }} · {{ quoteNo }}</div>
-                    <el-tag :type="quote.expired ? 'danger' : 'success'" size="small" effect="dark">
+                    <el-tag :type="quote.expired ? 'danger' : 'success'" size="small" effect="plain">
                         {{ quote.expired ? '已过期' : `剩余 ${quote.validSeconds}s` }}
                     </el-tag>
                 </div>
@@ -391,35 +391,33 @@ onMounted(() => {
 
 .bk__card {
     position: relative;
-    background: linear-gradient(135deg, #1f3a6e, #3d6ff5);
-    border-radius: 16px;
+    background: #fafbfc;
+    border-radius: var(--lab-radius);
     padding: 18px 20px;
-    color: #fff;
-    box-shadow: 0 10px 26px rgba(31, 58, 110, 0.28);
+    color: var(--lab-text);
     min-height: 180px;
 }
 
 .bk__card--frozen {
-    background: linear-gradient(135deg, #4a4f5a, #767c8a);
+    background: #fafbfc;
 }
 
 .bk__card-top {
     display: flex;
     justify-content: space-between;
     font-size: 13px;
-    opacity: 0.85;
+
 }
 
 .bk__card-no {
-    font-family: Menlo, Consolas, monospace;
+    font-family: var(--lab-font-mono);
     font-size: 19px;
-    letter-spacing: 1px;
     margin: 14px 0 4px;
 }
 
 .bk__card-owner {
     font-size: 13px;
-    opacity: 0.85;
+
 }
 
 .bk__card-bottom {
@@ -431,12 +429,12 @@ onMounted(() => {
 
 .bk__card-label {
     font-size: 12px;
-    opacity: 0.75;
+
 }
 
 .bk__card-amount {
-    font-size: 26px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
 }
 
 .bk__card-frozen {
@@ -455,10 +453,9 @@ onMounted(() => {
 }
 
 .bk__summary {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 14px 16px;
 }
 
@@ -475,8 +472,8 @@ onMounted(() => {
 }
 
 .bk__summary-value {
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
 }
 
 .bk__summary-label {
@@ -503,10 +500,9 @@ onMounted(() => {
 }
 
 .bk__panel {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 14px 16px;
 }
 
@@ -517,23 +513,23 @@ onMounted(() => {
 }
 
 .bk__quote {
-    background: #fafbfd;
+    background: #fafbfc;
     border: 1px solid var(--lab-border);
-    border-radius: 10px;
+    border-radius: var(--lab-radius);
     padding: 12px;
     margin-top: 10px;
 }
 
 .bk__quote-rate {
-    font-size: 26px;
-    font-weight: 700;
-    color: #3d6ff5;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--lab-primary);
 }
 
 .bk__quote-meta {
     font-size: 12px;
     color: var(--lab-muted);
     margin: 2px 0 6px;
-    font-family: Menlo, Consolas, monospace;
+    font-family: var(--lab-font-mono);
 }
 </style>

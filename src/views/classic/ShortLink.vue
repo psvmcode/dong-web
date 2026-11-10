@@ -148,16 +148,16 @@ async function flush() {
             </div>
             <div class="sl__hero-desc">生成短码、分享出去，再回来看看它被点了多少次。</div>
             <div class="sl__input-row">
-                <el-input v-model="url" size="large" placeholder="粘贴一个长链接">
+                <el-input v-model="url" size="small" placeholder="粘贴一个长链接">
                     <template #prepend>原链接</template>
                 </el-input>
-                <el-select v-model="expireMinutes" size="large" style="width: 140px">
+                <el-select v-model="expireMinutes" size="small" style="width: 140px">
                     <el-option label="10 分钟" :value="10" />
                     <el-option label="1 小时" :value="60" />
                     <el-option label="1 天" :value="1440" />
                     <el-option label="7 天" :value="10080" />
                 </el-select>
-                <el-button type="primary" size="large" @click="create">生成短链</el-button>
+                <el-button type="primary" size="small" @click="create">生成短链</el-button>
             </div>
         </div>
 
@@ -171,7 +171,7 @@ async function flush() {
             </div>
             <div class="sl__result-right">
                 <el-button :icon="CopyDocument" @click="copy(shortUrl(latest.code))">复制</el-button>
-                <el-tag size="large" effect="dark" type="danger">点击 {{ latest.hitCount }}</el-tag>
+                <el-tag size="small" effect="plain" type="danger">点击 {{ latest.hitCount }}</el-tag>
                 <el-switch v-model="latest.enabled" active-text="启用" inactive-text="停用" @change="toggle(latest)" />
             </div>
         </div>
@@ -241,31 +241,30 @@ async function flush() {
 
 <style scoped>
 .sl {
-    background: #f6f8fc;
+    background: #fafbfc;
     padding: 20px;
     border-radius: var(--lab-radius);
 }
 
 .sl__hero {
-    background: linear-gradient(135deg, #3d6ff5, #6f8cf7);
-    border-radius: 14px;
+    background: #fafbfc;
+    border-radius: var(--lab-radius);
     padding: 28px 28px 24px;
-    color: #fff;
-    box-shadow: 0 8px 24px rgba(61, 111, 245, 0.22);
+    color: var(--lab-text);
 }
 
 .sl__hero-title {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 26px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
 }
 
 .sl__hero-desc {
     margin: 8px 0 18px;
     font-size: 14px;
-    opacity: 0.86;
+
 }
 
 .sl__input-row {
@@ -283,13 +282,12 @@ async function flush() {
     display: flex;
     align-items: center;
     gap: 16px;
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
-    border-left: 4px solid #3d6ff5;
+    border-left: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
     padding: 16px 18px;
     margin: 16px 0;
-    box-shadow: var(--lab-shadow);
     flex-wrap: wrap;
 }
 
@@ -307,8 +305,8 @@ async function flush() {
     margin: 4px 0 6px;
     font-size: 20px;
     font-weight: 600;
-    color: #3d6ff5;
-    font-family: Menlo, Consolas, monospace;
+    color: var(--lab-primary);
+    font-family: var(--lab-font-mono);
 }
 
 .sl__result-meta {
@@ -325,11 +323,10 @@ async function flush() {
 }
 
 .sl__panel {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
     padding: 14px 16px;
-    box-shadow: var(--lab-shadow);
 }
 
 .sl__panel-head {
@@ -347,7 +344,7 @@ async function flush() {
 
 .sl__hits {
     font-weight: 600;
-    color: #e1251b;
+    color: var(--lab-danger);
 }
 
 .sl__tips {
@@ -358,7 +355,7 @@ async function flush() {
 }
 
 .sl__tip {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
     padding: 14px 16px;

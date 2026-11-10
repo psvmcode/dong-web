@@ -282,7 +282,7 @@ onMounted(() => {
                     <div class="pc__card-body">
                         <div class="pc__card-title">
                             {{ selected.name }}
-                            <el-tag v-if="selected.stale" size="small" type="warning" effect="dark">旧值兜底</el-tag>
+                            <el-tag v-if="selected.stale" size="small" type="warning" effect="plain">旧值兜底</el-tag>
                         </div>
                         <div class="pc__card-meta">
                             {{ selected.category }} · 库存 {{ selected.stock }} · {{ selected.status }}
@@ -309,9 +309,9 @@ onMounted(() => {
                     <div class="pc__trace-title">最近读取链路</div>
                     <div class="pc__flow">
                         <div class="pc__flow-node" :class="{ 'is-on': traces[0]?.layerTone === 'l1' }">L1<br />进程内</div>
-                        <span>›</span>
+                        <span>→</span>
                         <div class="pc__flow-node" :class="{ 'is-on': traces[0]?.layerTone === 'l2' }">L2<br />Redis</div>
-                        <span>›</span>
+                        <span>→</span>
                         <div class="pc__flow-node" :class="{ 'is-on': traces[0]?.layerTone === 'db' }">回源<br />MySQL</div>
                     </div>
                     <el-timeline v-if="traces.length > 0" class="pc__timeline">
@@ -376,10 +376,9 @@ onMounted(() => {
 }
 
 .pc__list {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 12px 14px;
 }
 
@@ -392,21 +391,20 @@ onMounted(() => {
 .pc__card {
     display: flex;
     gap: 12px;
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 14px;
 }
 
 .pc__card-img {
     width: 92px;
     height: 92px;
-    border-radius: 10px;
+    border-radius: var(--lab-radius);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 38px;
+    font-size: 16px;
     flex: 0 0 92px;
 }
 
@@ -430,9 +428,9 @@ onMounted(() => {
 }
 
 .pc__card-price {
-    color: #e1251b;
-    font-size: 22px;
-    font-weight: 700;
+    color: var(--lab-danger);
+    font-size: 16px;
+    font-weight: 600;
 }
 
 .pc__card-price span {
@@ -440,7 +438,7 @@ onMounted(() => {
 }
 
 .pc__placeholder {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px dashed var(--lab-border);
     border-radius: var(--lab-radius);
     padding: 48px 20px;
@@ -449,10 +447,9 @@ onMounted(() => {
 }
 
 .pc__trace {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 14px;
 }
 
@@ -473,8 +470,8 @@ onMounted(() => {
     flex: 1;
     text-align: center;
     padding: 8px 4px;
-    border-radius: 8px;
-    background: #f4f6fa;
+    border-radius: var(--lab-radius);
+    background: #fafbfc;
     color: var(--lab-muted);
     font-size: 12px;
     line-height: 1.4;
@@ -483,8 +480,8 @@ onMounted(() => {
 
 .pc__flow-node.is-on {
     background: var(--lab-primary-soft);
-    color: #3d6ff5;
-    border-color: #b9cdf7;
+    color: var(--lab-primary);
+    border-color: var(--lab-primary);
     font-weight: 600;
 }
 
@@ -495,24 +492,24 @@ onMounted(() => {
 }
 
 .pc__layer--l1 {
-    color: #3d6ff5;
+    color: var(--lab-primary);
 }
 
 .pc__layer--l2 {
-    color: #0ea5a5;
+    color: var(--lab-primary);
 }
 
 .pc__layer--db {
-    color: #d98900;
+    color: var(--lab-warn);
 }
 
 .pc__layer--stale {
-    color: #dc4a4a;
+    color: var(--lab-danger);
 }
 
 .pc__editor {
     margin-top: 14px;
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
     overflow: hidden;

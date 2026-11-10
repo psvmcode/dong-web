@@ -178,7 +178,7 @@ onMounted(() => {
                 <el-button size="small" :icon="RefreshRight" @click="loadBoth()">两种都读一次</el-button>
             </div>
 
-            <el-skeleton :loading="loading && feed.length === 0" animated :count="2">
+            <el-skeleton :loading="loading && feed.length === 0" :count="2">
                 <template #template>
                     <div class="feed__item">
                         <el-skeleton-item variant="circle" style="width: 42px; height: 42px" />
@@ -250,7 +250,7 @@ onMounted(() => {
                     <el-button size="small" @click="queryCommon">求交集</el-button>
                 </div>
                 <div class="lab-row" style="margin-top: 8px">
-                    <el-tag v-for="id in common" :key="id" size="small" effect="light">实验员 {{ id }}</el-tag>
+                    <el-tag v-for="id in common" :key="id" size="small" effect="plain">实验员 {{ id }}</el-tag>
                     <span v-if="common.length === 0 && commonResult" class="lab-hint">没有共同关注</span>
                 </div>
             </div>
@@ -305,10 +305,9 @@ onMounted(() => {
 }
 
 .feed__main {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     overflow: hidden;
 }
 
@@ -323,11 +322,11 @@ onMounted(() => {
 .feed__composer-avatar {
     width: 42px;
     height: 42px;
-    border-radius: 8px;
+    border-radius: var(--lab-radius);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--lab-text);
     font-weight: 600;
     flex: 0 0 42px;
 }
@@ -337,15 +336,15 @@ onMounted(() => {
     align-items: center;
     gap: 10px;
     padding: 8px 16px;
-    background: #fafbfd;
+    background: #fafbfc;
     border-bottom: 1px solid var(--lab-border);
 }
 
 .feed__tabs {
     display: flex;
     gap: 4px;
-    background: #eef1f6;
-    border-radius: 8px;
+    background: var(--lab-border);
+    border-radius: var(--lab-radius);
     padding: 3px;
 }
 
@@ -354,14 +353,13 @@ onMounted(() => {
     border-radius: 6px;
     font-size: 13px;
     cursor: pointer;
-    color: #4e5969;
+    color: var(--lab-text-2);
 }
 
 .feed__tabs .is-on {
-    background: #fff;
+    background: var(--lab-card);
     color: var(--lab-primary);
     font-weight: 600;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .feed__elapsed {
@@ -373,7 +371,7 @@ onMounted(() => {
     display: flex;
     gap: 12px;
     padding: 14px 16px;
-    border-bottom: 1px solid #f2f4f8;
+    border-bottom: 1px solid var(--lab-border);
 }
 
 .feed__item:last-child {
@@ -383,11 +381,11 @@ onMounted(() => {
 .feed__avatar {
     width: 42px;
     height: 42px;
-    border-radius: 8px;
+    border-radius: var(--lab-radius);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--lab-text);
     font-weight: 600;
     flex: 0 0 42px;
 }
@@ -409,7 +407,7 @@ onMounted(() => {
     margin: 6px 0 8px;
     font-size: 14px;
     line-height: 1.7;
-    color: #2b3444;
+    color: var(--lab-text-2);
     word-break: break-word;
 }
 
@@ -421,7 +419,7 @@ onMounted(() => {
 
 .feed__time {
     font-size: 12px;
-    color: #a3acbb;
+    color: var(--lab-muted);
 }
 
 .feed__empty {
@@ -437,10 +435,9 @@ onMounted(() => {
 }
 
 .feed__card {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 14px 16px;
 }
 
@@ -460,11 +457,11 @@ onMounted(() => {
 .feed__me-avatar {
     width: 44px;
     height: 44px;
-    border-radius: 8px;
+    border-radius: var(--lab-radius);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--lab-text);
     font-weight: 600;
 }
 
@@ -483,7 +480,7 @@ onMounted(() => {
     display: flex;
     justify-content: space-between;
     font-size: 12px;
-    color: #4e5969;
+    color: var(--lab-text-2);
     margin-bottom: 4px;
 }
 
@@ -494,7 +491,7 @@ onMounted(() => {
 
 .feed__compare-bar {
     height: 8px;
-    background: #f0f2f6;
+    background: var(--lab-border);
     border-radius: 4px;
     overflow: hidden;
     margin-bottom: 10px;
@@ -506,11 +503,11 @@ onMounted(() => {
 }
 
 .feed__compare-fill--push {
-    background: linear-gradient(90deg, #6f8cf7, #3d6ff5);
+    background: #fafbfc;
 }
 
 .feed__compare-fill--pull {
-    background: linear-gradient(90deg, #ffd15c, #f2b94b);
+    background: #fafbfc;
 }
 
 @media (max-width: 1100px) {

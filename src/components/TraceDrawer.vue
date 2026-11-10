@@ -29,7 +29,7 @@ function toneOf(entry: { ok: boolean; code: number }): 'success' | 'warning' | '
 <template>
     <div class="trace-fab">
         <el-badge :value="visible.length" :hidden="visible.length === 0" :max="99" type="primary">
-            <el-button circle type="primary" :icon="DataLine" title="内部链路" @click="trace.open = true" />
+            <el-button size="small" :icon="DataLine" @click="trace.open = true">内部链路</el-button>
         </el-badge>
     </div>
 
@@ -45,13 +45,9 @@ function toneOf(entry: { ok: boolean; code: number }): 'success' | 'warning' | '
             </div>
         </template>
 
-        <el-alert
-            type="info"
-            :closable="false"
-            title="这一层是给实验看的"
-            description="上面那部分是产品界面，这里记录它背后每一次请求的耗时、返回码与命中情况。成功的请求是绿色的，业务拒绝（1002/1003/1004 等）是橙色，网络失败是红色。"
-            style="margin-bottom: 12px"
-        />
+        <p class="lab-hint" style="margin-bottom: 12px">
+            记录页面背后每一次请求的耗时、返回码与响应摘要。绿色为成功，橙色为业务拒绝（1002/1003/1004 等），红色为网络失败。
+        </p>
 
         <el-descriptions :column="3" border size="small" style="margin-bottom: 12px">
             <el-descriptions-item label="记录条数">{{ visible.length }}</el-descriptions-item>
@@ -68,7 +64,7 @@ function toneOf(entry: { ok: boolean; code: number }): 'success' | 'warning' | '
                 placement="top"
             >
                 <div class="trace-item">
-                    <el-tag size="small" effect="dark" :type="toneOf(item)">{{ item.method }}</el-tag>
+                    <el-tag size="small" effect="plain" :type="toneOf(item)">{{ item.method }}</el-tag>
                     <span class="lab-mono">{{ item.url }}</span>
                     <span class="lab-spacer" />
                     <el-tag size="small" effect="plain">{{ item.elapsed }} ms</el-tag>
@@ -86,8 +82,8 @@ function toneOf(entry: { ok: boolean; code: number }): 'success' | 'warning' | '
 <style scoped>
 .trace-fab {
     position: fixed;
-    right: 22px;
-    bottom: 22px;
+    right: 16px;
+    bottom: 16px;
     z-index: 2000;
 }
 

@@ -414,7 +414,6 @@ onMounted(loadTasks);
 
         <div class="up__hero">
             <div class="up__drop" @click="($refs.fileInput as HTMLInputElement | undefined)?.click()">
-                <div class="up__drop-icon">📁</div>
                 <div class="up__drop-text">
                     {{ file ? file.name : '点击选择文件，或拖到这里' }}
                 </div>
@@ -485,7 +484,7 @@ onMounted(loadTasks);
         </div>
 
         <div v-if="instant" class="up__instant">
-            ⚡ 命中秒传：这个文件服务端已经有一份了，一个字节都不用再传
+            命中秒传：这个文件服务端已经有一份了，一个字节都不用再传
         </div>
 
         <div v-if="totalChunks > 0" class="up__panel">
@@ -552,22 +551,21 @@ onMounted(loadTasks);
 }
 
 .up__drop {
-    background: #fff;
-    border: 2px dashed #c9d3e4;
+    background: var(--lab-card);
+    border: 2px dashed var(--lab-border);
     border-radius: var(--lab-radius);
     padding: 30px 20px;
     text-align: center;
     cursor: pointer;
-    transition: border-color 0.16s ease, background 0.16s ease;
 }
 
 .up__drop:hover {
-    border-color: #3d6ff5;
-    background: #fafcff;
+    border-color: var(--lab-primary);
+    background: #fafbfc;
 }
 
 .up__drop-icon {
-    font-size: 40px;
+    font-size: 16px;
 }
 
 .up__drop-text {
@@ -585,10 +583,9 @@ onMounted(loadTasks);
 
 .up__hash,
 .up__panel {
-    background: #fff;
+    background: var(--lab-card);
     border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
-    box-shadow: var(--lab-shadow);
     padding: 14px 16px;
 }
 
@@ -602,9 +599,9 @@ onMounted(loadTasks);
 }
 
 .up__hash-value {
-    font-family: Menlo, Consolas, monospace;
+    font-family: var(--lab-font-mono);
     font-size: 12px;
-    color: #3d6ff5;
+    color: var(--lab-primary);
     margin-top: 8px;
     word-break: break-all;
 }
@@ -646,20 +643,20 @@ onMounted(loadTasks);
     font-size: 12px;
     color: var(--lab-muted);
     line-height: 1.8;
-    background: #fafbfd;
-    border-radius: 8px;
+    background: #fafbfc;
+    border-radius: var(--lab-radius);
     padding: 8px 12px;
     margin-top: 8px;
 }
 
 .up__instant {
-    background: #fff9e6;
-    border: 1px solid #ffe0a3;
+    background: #fafbfc;
+    border: 1px solid var(--lab-border);
     border-radius: var(--lab-radius);
     padding: 14px 16px;
     font-size: 14px;
     font-weight: 600;
-    color: #b26a00;
+    color: var(--lab-warn);
     margin-bottom: 14px;
 }
 
@@ -677,24 +674,24 @@ onMounted(loadTasks);
     justify-content: center;
     border-radius: 5px;
     font-size: 11px;
-    background: #f0f2f6;
-    color: #7a869a;
+    background: var(--lab-border);
+    color: var(--lab-muted);
 }
 
 .up__cell--uploading {
-    background: #d9e4ff;
-    color: #3d6ff5;
+    background: var(--lab-primary-soft);
+    color: var(--lab-primary);
 }
 
 .up__cell--done {
-    background: #d9f2e3;
-    color: #16a34a;
+    background: var(--lab-success-soft);
+    color: var(--lab-success);
     font-weight: 600;
 }
 
 .up__cell--failed {
-    background: #ffe0dd;
-    color: #dc4a4a;
+    background: var(--lab-danger-soft);
+    color: var(--lab-danger);
 }
 
 .up__legend {
@@ -714,19 +711,19 @@ onMounted(loadTasks);
 }
 
 .up__dot--pending {
-    background: #f0f2f6;
+    background: var(--lab-border);
 }
 
 .up__dot--uploading {
-    background: #d9e4ff;
+    background: var(--lab-primary-soft);
 }
 
 .up__dot--done {
-    background: #d9f2e3;
+    background: var(--lab-success-soft);
 }
 
 .up__dot--failed {
-    background: #ffe0dd;
+    background: var(--lab-danger-soft);
 }
 
 @media (max-width: 1000px) {
