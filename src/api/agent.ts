@@ -1,4 +1,4 @@
-import { deleteQuery, path, postJson } from './http';
+import { path, postJson, postQuery } from './http';
 import type {
     LabRunItem,
     LabRunResponse,
@@ -44,7 +44,7 @@ export function sessionMessages(sessionNo: string, pageNum = 1, pageSize = 50) {
 
 /** 删除会话及其消息。 */
 export function removeSession(sessionNo: string) {
-    return deleteQuery<null>(path('/api/agent/sessions/{sessionNo}', { sessionNo }));
+    return postQuery<null>(path('/api/agent/sessions/{sessionNo}/delete', { sessionNo }));
 }
 
 /** 发起一次运行，同步等待结束。 */

@@ -1,4 +1,4 @@
-import { deleteQuery, path, postJson, putJson } from './http';
+import { path, postJson, postQuery } from './http';
 import type {
     CacheStatsSnapshot,
     PageResult,
@@ -47,7 +47,7 @@ export function probe(body: ProbeQuery) {
 
 /** 删除缓存并广播失效事件。 */
 export function invalidate(key: string) {
-    return deleteQuery<null>('/api/cache/lab/probe', { key });
+    return postQuery<null>('/api/cache/lab/probe/delete', { key });
 }
 
 /** 分页查询商品，有意绕过缓存。 */
@@ -77,10 +77,10 @@ export function createProduct(body: ProductSaveRequest) {
 
 /** 更新商品，先更新数据库再失效缓存。 */
 export function updateProduct(id: number, body: ProductSaveRequest) {
-    return putJson<null>(path('/api/cache/products/{id}', { id }), body);
+    return postJson<null>(path('/api/cache/products/{id}/update', { id }), body);
 }
 
 /** 删除商品并失效缓存。 */
 export function deleteProduct(id: number) {
-    return deleteQuery<null>(path('/api/cache/products/{id}', { id }));
+    return postQuery<null>(path('/api/cache/products/{id}/delete', { id }));
 }

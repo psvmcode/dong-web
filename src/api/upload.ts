@@ -1,4 +1,4 @@
-import { deleteQuery, postJson, type ApiResult } from './http';
+import { postJson, postQuery, type ApiResult } from './http';
 import { useTraceStore } from '@/stores/trace';
 
 /**
@@ -149,5 +149,5 @@ export function tasks(query: { pageNum: number; pageSize: number; status?: numbe
  * @param uploadId 上传任务号
  */
 export function cancel(uploadId: string) {
-    return deleteQuery<null>(`/api/upload/${encodeURIComponent(uploadId)}`);
+    return postQuery<null>(`/api/upload/${encodeURIComponent(uploadId)}/cancel`);
 }

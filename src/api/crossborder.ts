@@ -1,4 +1,4 @@
-import { deleteQuery, path, postJson, postQuery } from './http';
+import { path, postJson, postQuery } from './http';
 import type {
     AccountCreateRequest,
     AccountEventResponse,
@@ -76,7 +76,7 @@ export function addSanction(ownerName: string) {
 
 /** 移出制裁名单。 */
 export function removeSanction(ownerName: string) {
-    return deleteQuery<null>('/api/crossborder/sanction', { ownerName });
+    return postQuery<null>('/api/crossborder/sanction/delete', { ownerName });
 }
 
 /** 查询制裁名单大小。 */
@@ -294,7 +294,7 @@ export function resetDaily(payerAccountId: number) {
 
 /** 清空 AML 监控数据。 */
 export function clearAml() {
-    return deleteQuery<null>('/api/crossborder/risk/aml');
+    return postQuery<null>('/api/crossborder/risk/aml');
 }
 
 // ------------------------------------------------------------------ 对账

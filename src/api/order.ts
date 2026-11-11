@@ -1,4 +1,4 @@
-import { deleteQuery, path, postJson, postQuery } from './http';
+import { path, postJson, postQuery } from './http';
 import type {
     OrderBenchmarkResponse,
     OrderCreateRequest,
@@ -56,5 +56,5 @@ export function plantuml() {
 
 /** 删除订单及其流转日志。 */
 export function remove(orderNo: string) {
-    return deleteQuery<null>(path('/api/order/{orderNo}', { orderNo }));
+    return postQuery<null>(path('/api/order/{orderNo}/delete', { orderNo }));
 }
